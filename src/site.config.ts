@@ -72,7 +72,7 @@ export const SITE_CONFIG: SiteConfig = {
     },
   },
 
-  githubUrl: 'https://github.com/',
+  githubUrl: 'https://github.com/minecraftgive/Vibe_Code_Blog/',
 
   nav: {
     showLang: true,
