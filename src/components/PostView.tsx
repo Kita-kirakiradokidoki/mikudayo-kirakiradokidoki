@@ -1,12 +1,233 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { gsap, useGSAP, SplitText, prefersReducedMotion } from '../lib/gsap'
 import { useLang } from '../i18n'
 import { type PostDef } from '../data/posts'
-import { ArrowLeft } from 'lucide-react'
+import type { PostAudioTrack } from '../data/posts/types'
+import { ArrowLeft, Music, Play, Pause } from 'lucide-react'
+import { useBgm } from './AudioProvider'
+
+/** inline music card rendered by a `^track-id^` marker line */
+function MusicCard({ track }: { track: PostAudioTrack }) {
+  const { meta, playing, setTrack, toggle } = useBgm()
+  const isCurrent = meta.url === track.url
+
+  const handleClick = () => {
+    if (isCurrent) {
+      toggle()
+    } else {
+      setTrack({
+        url: track.url,
+        title: track.title || 'Untitled',
+        artist: track.artist || '',
+        cover: track.cover || '',
+      })
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      aria-label={isCurrent && playing ? '暂停' : '播放'}
+      className={`my-4 flex w-full max-w-md items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+        isCurrent
+          ? 'border-accent/60 bg-ink-2'
+          : 'border-line bg-ink-2/60 hover:border-accent/40'
+      }`}
+    >
+      {/* left: album cover */}
+      <span className="relative size-14 shrink-0 overflow-hidden rounded-md border border-line bg-ink">
+        {track.cover ? (
+          <img src={track.cover} alt="" className="size-full object-cover" />
+        ) : (
+          <span className="grid size-full place-items-center text-accent">
+            <Music className="size-5" />
+          </span>
+        )}
+      </span>
+
+      {/* right: title, then artist on the next line */}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-mono text-sm text-paper">
+          {track.title || 'Untitled'}
+        </span>
+        <span className="block truncate font-mono text-xs text-dim">{track.artist || ''}</span>
+      </span>
+
+      <span className="shrink-0 text-accent">
+        {isCurrent && playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+      </span>
+    </button>
+  )
+}
+
+const TRACK_MARKER = /^\s*\^(.+?)\^\s*$/
+
+type HeadingLevel = 1 | 2 | 3
+type Heading = { id: string; level: HeadingLevel; text: string }
+
+/** detect a heading line: `#`/`##`/`###` markdown, or legacy `**bold**` line (= h2) */
+function parseHeading(line: string): { level: HeadingLevel; text: string } | null {
+  const md = line.match(/^(#{1,3})\s+(.+)$/)
+  if (md) return { level: md[1].length as HeadingLevel, text: md[2].trim() }
+  if (line.startsWith('**') && line.endsWith('**') && line.length > 4) {
+    return { level: 2, text: line.replace(/\*\*/g, '').trim() }
+  }
+  return null
+}
+
+const HEADING_CLASS: Record<HeadingLevel, string> = {
+  1: 'text-accent mt-10 mb-5 text-xl font-bold tracking-tight md:text-2xl',
+  2: 'text-accent mt-8 mb-4 text-lg font-bold tracking-tight md:text-xl',
+  3: 'text-accent mt-6 mb-3 text-base font-bold tracking-tight md:text-lg',
+}
+
+/** a parsed block of post body, classified by the custom block parser */
+type Block =
+  | { kind: 'track'; id: string; key: number }
+  | { kind: 'heading'; level: HeadingLevel; text: string; key: number }
+  | { kind: 'code'; lang: string; content: string; key: number }
+  | { kind: 'paragraph'; lines: string[]; key: number }
+
+/** left-side table of contents with scrollspy */
+function Toc({ headings, label }: { headings: Heading[]; label: string }) {
+  const [activeId, setActiveId] = useState('')
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (headings.length === 0) return
+      // reached the very bottom -> last section is being read
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+        setActiveId(headings[headings.length - 1].id)
+        return
+      }
+      // otherwise: the last heading above the reading line (130px from top);
+      // before the first heading, default to the first section
+      let cur = headings[0].id
+      for (const h of headings) {
+        const el = document.getElementById(h.id)
+        if (el && el.getBoundingClientRect().top <= 130) cur = h.id
+      }
+      setActiveId(cur)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [headings])
+
+  if (headings.length === 0) return null
+
+  return (
+    <nav
+      data-post-meta
+      aria-label={label}
+      className="fixed top-44 left-[max(0.75rem,calc(50%-39rem))] hidden w-56 xl:block"
+    >
+      <div className="text-dim mb-3 flex items-center gap-2 font-mono text-[16px] tracking-[0.2em] uppercase">
+        <span className="bg-accent inline-block size-2" />
+        {label}
+      </div>
+      <ul className="border-line border-l">
+        {headings.map((h) => (
+          <li key={h.id}>
+            <button
+              onClick={() =>
+                document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' })
+              }
+              aria-current={activeId === h.id ? 'true' : undefined}
+              className={`-ml-px block w-full truncate border-l-2 py-1 pr-2 text-left font-mono text-[17px] transition-colors ${
+                activeId === h.id
+                  ? 'border-accent text-accent bg-accent/10 font-bold'
+                  : 'text-dim hover:text-paper border-transparent'
+              }`}
+              style={{ paddingLeft: `${10 + (h.level - 1) * 12}px` }}
+            >
+              {h.text}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
 
 export default function PostView({ post, onBack }: { post: PostDef; onBack: () => void }) {
   const { t, pick } = useLang()
   const scope = useRef<HTMLElement>(null)
+
+  const tracksById = useMemo(
+    () => new Map((post.audio ?? []).map((tr) => [tr.id, tr])),
+    [post.audio],
+  )
+
+  const bodyLines = useMemo(() => pick(post.body).split('\n'), [post, pick])
+
+  /** custom block parser: keep track markers, headings (-> TOC) and fenced
+   *  code blocks as first-class blocks; everything else becomes a paragraph
+   *  block rendered by react-markdown. */
+  const blocks = useMemo<Block[]>(() => {
+    const out: Block[] = []
+    const lines = bodyLines
+    let i = 0
+    let key = 0
+    while (i < lines.length) {
+      const line = lines[i]
+      const marker = line.match(TRACK_MARKER)
+      if (marker) {
+        out.push({ kind: 'track', id: marker[1].trim(), key: key++ })
+        i++
+        continue
+      }
+      const heading = parseHeading(line)
+      if (heading) {
+        out.push({ kind: 'heading', level: heading.level, text: heading.text, key: key++ })
+        i++
+        continue
+      }
+      if (line.startsWith('```')) {
+        const lang = line.slice(3).trim()
+        const contentLines: string[] = []
+        let j = i + 1
+        while (j < lines.length && !lines[j].startsWith('```')) {
+          contentLines.push(lines[j])
+          j++
+        }
+        out.push({ kind: 'code', lang, content: contentLines.join('\n'), key: key++ })
+        i = j + 1
+        continue
+      }
+      if (line.trim() === '') {
+        i++
+        continue
+      }
+      const para: string[] = []
+      while (
+        i < lines.length &&
+        !lines[i].match(TRACK_MARKER) &&
+        !parseHeading(lines[i]) &&
+        !lines[i].startsWith('```') &&
+        lines[i].trim() !== ''
+      ) {
+        para.push(lines[i])
+        i++
+      }
+      out.push({ kind: 'paragraph', lines: para, key: key++ })
+    }
+    return out
+  }, [bodyLines])
+
+  const headings = useMemo(
+    () =>
+      blocks
+        .filter((b): b is Extract<Block, { kind: 'heading' }> => b.kind === 'heading')
+        .map((b) => ({ level: b.level, text: b.text, id: `h-${b.key}` })),
+    [blocks],
+  )
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -28,6 +249,7 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
 
   return (
     <section ref={scope} className="relative overflow-hidden">
+      <Toc headings={headings} label={t('post.toc')} />
       <div className="mx-auto w-full max-w-3xl px-4 pt-28 pb-16 md:pt-44 md:pb-28">
         <button
           data-post-meta
@@ -68,20 +290,64 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
             className="prose prose-invert max-w-none leading-relaxed text-sm md:text-base"
             style={{ color: 'var(--color-paper)' }}
           >
-            {pick(post.body).split('\n').map((line, i) => {
-              if (line.startsWith('**') && line.endsWith('**')) {
+            {blocks.map((b) => {
+              if (b.kind === 'track') {
+                const track = tracksById.get(b.id)
+                return track ? <MusicCard key={b.key} track={track} /> : null
+              }
+              if (b.kind === 'heading') {
+                const Tag = `h${b.level}` as 'h1' | 'h2' | 'h3'
                 return (
-                  <h2 key={i} className="text-accent mt-8 mb-4 text-lg font-bold tracking-tight md:text-xl">
-                    {line.replace(/\*\*/g, '')}
-                  </h2>
+                  <Tag
+                    key={b.key}
+                    id={`h-${b.key}`}
+                    className={`scroll-mt-24 ${HEADING_CLASS[b.level]}`}
+                  >
+                    {b.text}
+                  </Tag>
                 )
               }
-              if (line.startsWith('```')) return null
-              if (line === '') return <br key={i} />
+              if (b.kind === 'code') {
+                return (
+                  <pre
+                    key={b.key}
+                    className="my-5 overflow-x-auto rounded-lg border border-line bg-ink p-4 text-xs leading-relaxed"
+                  >
+                    <code className="font-mono text-paper/90">{b.content}</code>
+                  </pre>
+                )
+              }
               return (
-                <p key={i} className="mb-4 text-paper/85">
-                  {line}
-                </p>
+                <ReactMarkdown
+                  key={b.key}
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ node: _node, className, children, ...rest }) {
+                      return (
+                        <code
+                          className={`rounded bg-ink px-1.5 py-0.5 font-mono text-[0.85em] text-accent ${className ?? ''}`}
+                          {...rest}
+                        >
+                          {children}
+                        </code>
+                      )
+                    },
+                    a({ node: _node, children, ...rest }) {
+                      return (
+                        <a
+                          className="text-accent underline underline-offset-2"
+                          target="_blank"
+                          rel="noreferrer"
+                          {...rest}
+                        >
+                          {children}
+                        </a>
+                      )
+                    },
+                  }}
+                >
+                  {b.lines.join('\n')}
+                </ReactMarkdown>
               )
             })}
           </div>

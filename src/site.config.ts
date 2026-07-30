@@ -27,6 +27,30 @@ export type SiteConfig = {
     showTheme: boolean
     showGithub: boolean
   }
+  background: {
+    type: 'none' | 'image'
+    url: string
+    overlay: number
+    blur: number
+    fit: 'cover' | 'contain' | 'repeat'
+  }
+  audio: {
+    home: {
+      enabled: boolean
+      /** default volume, 0~1 */
+      volume: number
+      /** playlist: played in order and looped on the homepage */
+      tracks: {
+        url: string
+        title: string
+        artist: string
+        cover: string
+      }[]
+    }
+  }
+  grid: {
+    enabled: boolean
+  }
   hero: {
     showParallax: boolean
     showStats: boolean
@@ -80,6 +104,33 @@ export const SITE_CONFIG: SiteConfig = {
     showGithub: true,
   },
 
+  background: {
+    type: 'image',
+    url: '/bg.jpg',
+    overlay: 0.5,
+    blur: 0,
+    fit: 'cover',
+  },
+
+  audio: {
+    home: {
+      enabled: true,
+      volume: 0.2,
+      tracks: [
+        {
+          url: '/audio/main.mp3',
+          title: 'インパアフェクシオン・ホワイトガアル',
+          artist: 'ツミキ/月乃',
+          cover: '/audio/main.webp',
+        },
+      ],
+    },
+  },
+
+  grid: {
+    enabled: false,
+  },
+
   hero: {
     showParallax: true,
     showStats: true,
@@ -101,6 +152,10 @@ export const SITE_CONFIG: SiteConfig = {
       'post.back': '返回首页',
       'post.published': '发布于',
       'post.tags': '标签',
+      'post.audio': '音频',
+      'post.toc': '目录',
+      'audio.play': '播放音乐',
+      'audio.pause': '暂停音乐',
       'footer.tagline': '占位符喵。',
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
     },
@@ -117,6 +172,10 @@ export const SITE_CONFIG: SiteConfig = {
       'post.back': 'Back to home',
       'post.published': 'Published',
       'post.tags': 'Tags',
+      'post.audio': 'Audio',
+      'post.toc': 'Contents',
+      'audio.play': 'Play music',
+      'audio.pause': 'Pause music',
       'footer.tagline': 'I am a PlaceHolder',
       'footer.built': 'Built with React · GSAP · Tailwind · Bun.',
     },

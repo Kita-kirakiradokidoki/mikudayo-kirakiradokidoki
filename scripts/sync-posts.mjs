@@ -19,6 +19,11 @@
  * date: '2026.06.15'
  * readTime: 4 min
  * hidden: false                 # optional, set true to hide the post
+ * track_<id>: url | title | artist | cover
+ *                               # optional, define audio tracks (multiple allowed)
+ *   e.g. track_moon: /audio/moon.mp3 | Moonlight | Some Artist | /audio/moon.jpg
+ *   Reference a track in the body with a line containing only ^moon^ —
+ *   it renders a music card that plays in the floating player.
  * ---
  *
  * Body content. Use `<!-- zh -->` / `<!-- en -->` markers to separate
@@ -148,6 +153,29 @@ function main() {
     const date = m.date || '2026.06'
     const readTime = m.readTime || '1 min'
     const hidden = m.hidden === true
+    const tracks = Object.keys(m)
+      .filter((k) => k.startsWith('track_') && typeof m[k] === 'string' && m[k])
+      .map((k) => {
+        const [url, title, artist, cover] = String(m[k])
+          .split('|')
+          .map((s) => s.trim())
+        return { id: k.slice('track_'.length), url, title, artist, cover }
+      })
+      .filter((t) => t.id && t.url)
+    const audioBlock = tracks.length
+      ? [
+          `  audio: [`,
+          ...tracks.map(
+            (t) =>
+              `    { id: '${escapeTpl(t.id)}', url: '${escapeTpl(t.url)}'` +
+              (t.title ? `, title: '${escapeTpl(t.title)}'` : '') +
+              (t.artist ? `, artist: '${escapeTpl(t.artist)}'` : '') +
+              (t.cover ? `, cover: '${escapeTpl(t.cover)}'` : '') +
+              ` },`,
+          ),
+          `  ],`,
+        ].join('\n')
+      : null
 
     const lines = [
       `import type { PostDef } from './types'`,
@@ -167,6 +195,7 @@ function main() {
       `  tags: [${tags}],`,
       `  date: '${date}',`,
       `  readTime: '${readTime}',`,
+      audioBlock,
       hidden ? `  hidden: true,` : null,
       `}`,
       '',

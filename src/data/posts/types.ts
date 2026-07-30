@@ -10,4 +10,14 @@ export type PostDef = {
   date: string
   readTime: string
   hidden?: boolean
+  /** tracks referenced in the body via ^id^ markers */
+  audio?: PostAudioTrack[]
+}
+
+export type PostAudioTrack = {
+  id: string
+  url: string
+  title?: string
+  artist?: string
+  cover?: string
 }

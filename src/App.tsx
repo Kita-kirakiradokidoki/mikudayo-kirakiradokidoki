@@ -13,9 +13,14 @@ import Footer from './components/Footer'
 import CursorGlow from './components/CursorGlow'
 import ScrollProgress from './components/ScrollProgress'
 import GridSpotlight from './components/GridSpotlight'
+import Background from './components/Background'
+import FloatingPlayer from './components/FloatingPlayer'
+import { AudioProvider, useBgm } from './components/AudioProvider'
+import { SITE_CONFIG } from './site.config'
 
 function Shell() {
   const { lang } = useLang()
+  const { setActive, setTrack } = useBgm()
   const [selectedPost, setSelectedPost] = useState<string | null>(null)
   const [activeTag, setActiveTag] = useState<string | null>(null)
 
@@ -33,6 +38,15 @@ function Shell() {
   useEffect(() => {
     ScrollTrigger.refresh()
   }, [lang])
+
+  useEffect(() => {
+    setActive(selectedPost === null)
+  }, [selectedPost, setActive])
+
+  // clear any article track override when the page changes
+  useEffect(() => {
+    setTrack(null)
+  }, [post, setTrack])
 
   useEffect(() => {
     const postId = window.location.hash.slice(1).split(':')[0]
@@ -81,8 +95,10 @@ function Shell() {
   )
 
   return (
-    <div className="bg-blueprint min-h-[100dvh]">
+    <div className={`${SITE_CONFIG.grid.enabled ? 'bg-blueprint' : ''} min-h-[100dvh]`}>
+      <Background />
       {layout}
+      <FloatingPlayer />
       <GridSpotlight />
       <ScrollProgress />
       <CursorGlow />
@@ -94,7 +110,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <LangProvider>
-        <Shell />
+        <AudioProvider>
+          <Shell />
+        </AudioProvider>
       </LangProvider>
     </ThemeProvider>
   )
