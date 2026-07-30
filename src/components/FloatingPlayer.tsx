@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Play, Pause, Music, Volume2, VolumeX } from 'lucide-react'
 import { useBgm } from './AudioProvider'
+import { withBase } from '../lib/base'
 
 function fmt(t: number) {
   if (!isFinite(t) || t < 0) t = 0
@@ -49,7 +50,7 @@ export default function FloatingPlayer() {
           }`}
         >
           {meta.cover ? (
-            <img src={meta.cover} alt="" className="size-full object-cover" />
+            <img src={withBase(meta.cover)} alt="" className="size-full object-cover" />
           ) : (
             <span className="grid size-full place-items-center text-accent">
               <Music className="size-6" />

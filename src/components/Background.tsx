@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { SITE_CONFIG } from '../site.config'
+import { withBase } from '../lib/base'
 
 function imageStyle(url: string, fit: 'cover' | 'contain' | 'repeat') {
   const base: CSSProperties = { backgroundImage: `url(${url})`, backgroundPosition: 'center' }
@@ -21,7 +22,7 @@ export default function Background() {
       <div
         className="absolute inset-0"
         style={{
-          ...imageStyle(background.url, background.fit),
+          ...imageStyle(withBase(background.url), background.fit),
           filter: background.blur > 0 ? `blur(${background.blur}px)` : undefined,
         }}
       />

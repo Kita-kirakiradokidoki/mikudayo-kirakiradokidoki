@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { SITE_CONFIG } from '../site.config'
+import { withBase } from '../lib/base'
 
 export type TrackMeta = {
   title: string
@@ -81,7 +82,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   // create / destroy the shared audio element whenever the track changes
   useEffect(() => {
     if (!currentUrl) return
-    const el = new Audio(currentUrl)
+    const el = new Audio(withBase(currentUrl))
     // single home track loops itself; multi-track playlist advances on "ended"
     el.loop = !isOverride && homeCount <= 1
     el.preload = 'auto'

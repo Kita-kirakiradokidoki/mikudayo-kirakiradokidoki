@@ -7,6 +7,7 @@ import { type PostDef } from '../data/posts'
 import type { PostAudioTrack } from '../data/posts/types'
 import { ArrowLeft, Music, Play, Pause } from 'lucide-react'
 import { useBgm } from './AudioProvider'
+import { withBase } from '../lib/base'
 
 /** inline music card rendered by a `^track-id^` marker line */
 function MusicCard({ track }: { track: PostAudioTrack }) {
@@ -39,7 +40,7 @@ function MusicCard({ track }: { track: PostAudioTrack }) {
       {/* left: album cover */}
       <span className="relative size-14 shrink-0 overflow-hidden rounded-md border border-line bg-ink">
         {track.cover ? (
-          <img src={track.cover} alt="" className="size-full object-cover" />
+          <img src={withBase(track.cover)} alt="" className="size-full object-cover" />
         ) : (
           <span className="grid size-full place-items-center text-accent">
             <Music className="size-5" />
