@@ -28,9 +28,15 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - name: Compute Pages base path
+        run: |
+          REPO="${GITHUB_REPOSITORY##*/}"   # strip "owner/", keep repo name
+          if [[ "$REPO" == *.github.io ]]; then
+            echo "PAGES_BASE_URL=/" >> "$GITHUB_ENV"   # user/org page
+          else
+            echo "PAGES_BASE_URL=/$REPO/" >> "$GITHUB_ENV"   # project page
+          fi
       - run: npm run build
-        env:
-          PAGES_BASE_URL: ${{ steps.pages.outputs.base_path }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
