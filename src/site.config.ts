@@ -140,10 +140,10 @@ export const SITE_CONFIG: SiteConfig = {
 
   strings: {
     zh: {
-      'doc.title': 'Nothing~ · qwq',
+      'doc.title': 'Miku da yo-',
       'hero.kicker': 'Blog',
-      'hero.badge': 'Null · Nop · Empty',
-      'hero.sub': '这个是副标题呀',
+      'hero.badge': 'Music · Share · Game',
+      'hero.sub': '个人作品集',
       'hero.readMore': '阅读文章',
       'meta.posts': '文章',
       'meta.tags': '标签',
@@ -156,7 +156,7 @@ export const SITE_CONFIG: SiteConfig = {
       'post.toc': '目录',
       'audio.play': '播放音乐',
       'audio.pause': '暂停音乐',
-      'footer.tagline': '占位符喵。',
+      'footer.tagline': '咕咕嘎嘎？',
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
     },
     en: {
