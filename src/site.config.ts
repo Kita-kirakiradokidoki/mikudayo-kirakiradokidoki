@@ -160,9 +160,9 @@ export const SITE_CONFIG: SiteConfig = {
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
     },
     en: {
-      'doc.title': 'Nothing~ · qwq',
+      'doc.title': 'Miku da yo-',
       'hero.kicker': 'Blog',
-      'hero.badge': 'Null · Nop · Empty',
+      'hero.badge': 'Music · Share · Game',
       'hero.sub': 'Just a sub title meow~',
       'hero.readMore': 'Read posts',
       'meta.posts': 'posts',
