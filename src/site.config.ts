@@ -65,10 +65,10 @@ export type SiteConfig = {
 
 export const SITE_CONFIG: SiteConfig = {
   brand: {
-    name: 'Test BLOG',
-    shortName: 'qwq',
-    titleWord1: 'Nothing~',
-    titleWord2: 'Test',
+    name: 'Miku da yo-作品集',
+    shortName: '-miku-',
+    titleWord1: 'MIKU DA YO',
+    titleWord2: 'MUSIC',
   },
 
   colors: {
