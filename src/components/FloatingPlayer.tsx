@@ -36,7 +36,7 @@ export default function FloatingPlayer() {
     <div
       onMouseEnter={() => setCollapsed(false)}
       onMouseLeave={() => setCollapsed(true)}
-      className={`fixed bottom-5 right-5 z-50 origin-bottom-right scale-[1.2] overflow-hidden rounded-xl border bg-ink-2/95 shadow-xl backdrop-blur transition-[width,border-color] duration-[450ms] ${EASE} ${
+      className={`relative z-50 origin-bottom-right scale-[1.2] overflow-hidden rounded-xl border bg-ink/80 shadow-xl backdrop-blur-md transition-[width,border-color] duration-[450ms] ${EASE} ${
         collapsed ? 'size-16 border-transparent' : 'w-[316px] border-line'
       }`}
     >
@@ -45,7 +45,7 @@ export default function FloatingPlayer() {
         <button
           onClick={toggle}
           aria-label={playing ? '暂停' : '播放'}
-          className={`relative size-16 shrink-0 overflow-hidden bg-ink transition-[border-radius] duration-[450ms] ${EASE} ${
+          className={`relative size-16 shrink-0 overflow-hidden bg-ink-2 transition-[border-radius] duration-[450ms] ${EASE} ${
             collapsed ? '-m-px rounded-xl' : 'rounded-md border border-line'
           }`}
         >

@@ -56,7 +56,7 @@ const CommentTerminal = memo(function CommentTerminal() {
   if (entries.length === 0) return null
 
   return (
-    <div ref={scope} className="border-line bg-ink-2/60 max-w-3xl border backdrop-blur-sm">
+    <div ref={scope} className="border-line bg-ink/80 max-w-3xl border backdrop-blur-sm">
       <div className="border-line flex items-center justify-between gap-4 border-b px-4 py-2 font-mono text-[10px] tracking-[0.25em] uppercase">
         <span className="text-dim">comments</span>
         <span className="text-accent truncate normal-case">

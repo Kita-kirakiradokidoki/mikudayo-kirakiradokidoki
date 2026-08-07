@@ -1,7 +1,30 @@
 @import "tailwindcss";
 
+/* Custom fonts (subset to woff2 via `py scripts/subset-fonts.py`):
+   - 'SF Pro'      : Latin / digits (English, numbers, punctuation)
+   - 'PingFang UI' : CJK (Chinese)
+   The browser falls back per glyph, so Latin/numbers use SF Pro and
+   Chinese characters fall through to PingFang automatically. */
+@font-face {
+  font-family: 'SF Pro';
+  src: url('./fonts/SFPro.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PingFang UI';
+  src: url('./fonts/PingFang.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
-  --font-display: "Space Grotesk", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif;
+  --font-display: 'SF Pro', 'PingFang UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', system-ui, sans-serif;
+  /* Wire our custom stack into Tailwind's default so `font-sans` and the
+     preflight `html` rule also pick up SF Pro / PingFang. */
+  --default-font-family: 'SF Pro', 'PingFang UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --color-ink: var(--color-ink);
@@ -24,7 +47,9 @@
 body {
   background: var(--color-ink);
   color: var(--color-paper);
-  font-family: var(--font-display);
+  /* Defined directly (not via a theme token) so it always applies.
+     Latin/digits -> SF Pro; CJK -> PingFang; then system fallbacks. */
+  font-family: 'SF Pro', 'PingFang UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.45s ease, color 0.45s ease;
 }

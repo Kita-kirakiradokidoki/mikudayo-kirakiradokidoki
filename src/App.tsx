@@ -15,14 +15,23 @@ import ScrollProgress from './components/ScrollProgress'
 import GridSpotlight from './components/GridSpotlight'
 import Background from './components/Background'
 import FloatingPlayer from './components/FloatingPlayer'
+import FloatingSteam from './components/FloatingSteam'
+import FloatingLayer from './components/FloatingLayer'
+import TestPage from './components/TestPage'
 import { AudioProvider, useBgm } from './components/AudioProvider'
 import { SITE_CONFIG } from './site.config'
+
+function isTestRoute(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.location.pathname.replace(/\/+$/, '') === '/test'
+}
 
 function Shell() {
   const { lang } = useLang()
   const { setActive, setTrack } = useBgm()
   const [selectedPost, setSelectedPost] = useState<string | null>(null)
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [testRoute] = useState<boolean>(isTestRoute)
 
   const allTags = useMemo(
     () => [...new Set(POSTS.flatMap((p) => p.tags))].sort(),
@@ -64,6 +73,19 @@ function Shell() {
     }
   }, [selectedPost])
 
+  if (testRoute) {
+    return (
+      <div className="min-h-[100dvh]">
+        <Background />
+        <TestPage onExit={() => (window.location.pathname = '/')} />
+        <FloatingLayer>
+          <FloatingPlayer />
+          <FloatingSteam />
+        </FloatingLayer>
+      </div>
+    )
+  }
+
   const layout = (
     <>
       <TopBar />
@@ -98,7 +120,10 @@ function Shell() {
     <div className={`${SITE_CONFIG.grid.enabled ? 'bg-blueprint' : ''} min-h-[100dvh]`}>
       <Background />
       {layout}
-      <FloatingPlayer />
+      <FloatingLayer>
+        <FloatingPlayer />
+        <FloatingSteam />
+      </FloatingLayer>
       <GridSpotlight />
       <ScrollProgress />
       <CursorGlow />

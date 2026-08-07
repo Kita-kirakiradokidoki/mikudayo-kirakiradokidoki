@@ -48,6 +48,16 @@ export type SiteConfig = {
       }[]
     }
   }
+  steam: {
+    /** master switch for the bottom-right Steam card */
+    enabled: boolean
+    /** SteamID64, vanity name, or a full steamcommunity.com profile URL */
+    steamId: string
+    /** polling interval in seconds (min 15; the proxy caches upstream for 60s) */
+    refreshSeconds: number
+    /** override when the proxy is hosted on another origin */
+    apiBase: string
+  }
   grid: {
     enabled: boolean
   }
@@ -127,6 +137,14 @@ export const SITE_CONFIG: SiteConfig = {
     },
   },
 
+  steam: {
+    enabled: true,
+    // SteamID64 / 自定义 URL 名 / 完整主页链接都可以
+    steamId: '76561199319113394',
+    refreshSeconds: 60,
+    apiBase: '/api/steam',
+  },
+
   grid: {
     enabled: false,
   },
@@ -156,6 +174,28 @@ export const SITE_CONFIG: SiteConfig = {
       'post.toc': '目录',
       'audio.play': '播放音乐',
       'audio.pause': '暂停音乐',
+      'steam.title': 'Steam 动态',
+      'steam.loading': '正在连接 Steam…',
+      'steam.error': '暂时拿不到 Steam 数据',
+      'steam.private': '该资料为私密状态',
+      'steam.playing': '正在游玩',
+      'steam.recent': '最近两周',
+      'steam.top': '游玩最多',
+      'steam.noRecent': '最近两周没有游玩记录',
+      'steam.level': '等级',
+      'steam.games': '游戏',
+      'steam.total': '总时长',
+      'steam.twoWeeks': '两周',
+      'steam.refresh': '立即刷新',
+      'steam.profileLink': '打开 Steam 主页',
+      'steam.updated': '更新于',
+      'steam.state.offline': '离线',
+      'steam.state.online': '在线',
+      'steam.state.busy': '忙碌',
+      'steam.state.away': '离开',
+      'steam.state.snooze': '打盹',
+      'steam.state.trade': '想交易',
+      'steam.state.play': '想玩游戏',
       'footer.tagline': '咕咕嘎嘎？',
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
     },
@@ -176,6 +216,28 @@ export const SITE_CONFIG: SiteConfig = {
       'post.toc': 'Contents',
       'audio.play': 'Play music',
       'audio.pause': 'Pause music',
+      'steam.title': 'Steam activity',
+      'steam.loading': 'Connecting to Steam…',
+      'steam.error': 'Steam data unavailable',
+      'steam.private': 'This profile is private',
+      'steam.playing': 'Now playing',
+      'steam.recent': 'Last 2 weeks',
+      'steam.top': 'Most played',
+      'steam.noRecent': 'Nothing played in the last 2 weeks',
+      'steam.level': 'Level',
+      'steam.games': 'games',
+      'steam.total': 'total',
+      'steam.twoWeeks': '2 weeks',
+      'steam.refresh': 'Refresh now',
+      'steam.profileLink': 'Open Steam profile',
+      'steam.updated': 'updated',
+      'steam.state.offline': 'Offline',
+      'steam.state.online': 'Online',
+      'steam.state.busy': 'Busy',
+      'steam.state.away': 'Away',
+      'steam.state.snooze': 'Snooze',
+      'steam.state.trade': 'Looking to trade',
+      'steam.state.play': 'Looking to play',
       'footer.tagline': 'I am a PlaceHolder',
       'footer.built': 'Built with React · GSAP · Tailwind · Bun.',
     },
