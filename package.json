@@ -9,10 +9,12 @@
     "update": "node scripts/sync-posts.mjs && node scripts/sync-comments.mjs",
     "dev": "node scripts/sync-posts.mjs && node scripts/sync-comments.mjs && vite",
     "build": "node scripts/sync-posts.mjs && node scripts/sync-comments.mjs && tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
+    "express": "^4.21.0",
     "gsap": "^3.13.0",
     "lucide-react": "^0.525.0",
     "react": "^19.1.0",
