@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import PostCard from './PostCard'
 import CommentTerminal from './CommentTerminal'
+import PerfMonitor from './PerfMonitor'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useTheme, type ThemePref } from '../theme'
@@ -772,8 +773,20 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
         </div>
       </Section>
 
+      {/* ===== 性能监测 ===== */}
+      <Section
+        id="06"
+        title={pick({ zh: '性能监测', en: 'Performance' })}
+        desc={pick({
+          zh: '实时帧率与帧耗时、JS 堆内存、Core Web Vitals、加载阶段瀑布图、资源统计，以及可控的渲染 / 主线程压力测试。',
+          en: 'Live fps & frame time, JS heap, Core Web Vitals, load-phase waterfall, resource stats, and a controllable render / main-thread stress test.',
+        })}
+      >
+        <PerfMonitor />
+      </Section>
+
       <footer className="mt-10 text-center font-mono text-xs text-dim">
-        test page · {pick({ zh: '调色板 / 基础控件 / 自定义卡片 / MD 解析 / 自定义 MD 解析 / 字体对比', en: 'palettes / controls / cards / md / custom md / fonts' })}
+        test page · {pick({ zh: '调色板 / 基础控件 / 自定义卡片 / MD 解析 / 自定义 MD 解析 / 字体对比 / 性能监测', en: 'palettes / controls / cards / md / custom md / fonts / perf' })}
       </footer>
     </div>
   )

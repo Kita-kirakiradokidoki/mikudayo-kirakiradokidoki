@@ -34,7 +34,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, lang)
     } catch {
     }
-    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
+    // Keep the document language as `zh-CN` (set in index.html) for SEO /
+    // semantics, but mark the *body* as `en`. On Windows/Chrome, a `zh-CN` lang
+    // on the rendered text triggers the system CJK locale-font substitution
+    // (Microsoft YaHei), which overrides our PingFang webfont for Chinese.
+    // With the body as `en`, Chinese glyphs resolve through the `font-family`
+    // stack and use the custom webfont in both language modes.
+    if (document.body) document.body.lang = 'en'
     document.title = STRINGS[lang]['doc.title'] ?? SITE_CONFIG.brand.name
   }, [lang])
 

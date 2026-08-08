@@ -39,7 +39,8 @@ export default function PostCard({ post, onSelect }: { post: PostDef; onSelect: 
       <div className="flex flex-col gap-4 md:flex-row md:gap-8">
         <span
           data-card-fade
-          className="text-dim font-mono text-xs tracking-[0.2em] md:w-12 md:pt-1"
+          className="font-mono text-[12px] leading-4 tracking-[2px] md:w-12 md:h-[140px] md:px-5 md:pt-1 md:pb-0"
+          style={{ color: '#A0A0B0' }}
         >
           {post.index}
         </span>

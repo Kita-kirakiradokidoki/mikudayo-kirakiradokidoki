@@ -16,7 +16,7 @@ function fmt(t: number) {
 // no border (otherwise the base `border` 1px would clip the 64px cover).
 const EASE = 'var(--ease-drawer)'
 const DURATION_IN = '450ms'
-const DURATION_OUT = '270ms'
+const DURATION_OUT = '350ms'
 
 export default function FloatingPlayer() {
   const {

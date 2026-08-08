@@ -12,6 +12,14 @@ function GithubMark({ className }: { className?: string }) {
   )
 }
 
+function LangIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg viewBox="0 0 1152 1024" fill="currentColor" aria-hidden className={className} style={style}>
+      <path d="M621.504 669.12L488.64 540.608l1.536-1.472a891.968 891.968 0 0 0 194.304-334.4h153.408V102.4H471.36V0H366.592v102.4H0v101.888h584.96A800.768 800.768 0 0 1 418.944 478.72a800.704 800.704 0 0 1-120.96-171.52H193.28a897.344 897.344 0 0 0 156.032 233.408l-266.624 257.088 74.368 72.64 261.888-256 162.816 159.232 39.744-104.448zM916.416 409.6h-104.832L576 1024h104.704l58.624-153.6h248.768l59.2 153.6H1152l-235.584-614.4v-0.064z m-137.28 358.4L864 546.24 948.864 768h-169.728z" />
+    </svg>
+  )
+}
+
 function PaletteSwatch({ id, active }: { id: PaletteId; active: boolean }) {
   const colors = SITE_CONFIG.colors[id].colors.dark
   return (
@@ -143,25 +151,44 @@ function ThemeToggle({ theme, setTheme }: { theme: import('../theme').ThemePref;
   )
 }
 
+const LANG_ITEMS: { lang: Lang; label: { zh: string; en: string } }[] = [
+  { lang: 'zh', label: { zh: '中文', en: '中文' } },
+  { lang: 'en', label: { zh: 'EN', en: 'EN' } },
+]
+
+function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
+  const { pick } = useLang()
+  const current = LANG_ITEMS.find((i) => i.lang === lang) ?? LANG_ITEMS[0]
+
+  return (
+    <button
+      onClick={() => {
+        const idx = LANG_ITEMS.findIndex((i) => i.lang === lang)
+        setLang(LANG_ITEMS[(idx + 1) % LANG_ITEMS.length].lang)
+      }}
+      aria-label={pick(current.label)}
+      title={pick(current.label)}
+      className="text-dim hover:text-paper relative grid size-8 place-items-center rounded-md border border-transparent transition-colors hover:border-ink-2/20 hover:bg-ink-2/10 press-sm"
+    >
+      {LANG_ITEMS.map(({ lang: l }) => (
+        <LangIcon
+          key={l}
+          className={`absolute size-4 transition-all ${
+            l === lang ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-50 opacity-0'
+          }`}
+          style={{ transitionDuration: '220ms', transitionTimingFunction: 'var(--ease-spring)' }}
+        />
+      ))}
+      {/* 当前图标作为可访问性焦点锚点（视觉上被上面的映射覆盖） */}
+      <LangIcon className="size-4 opacity-0" aria-hidden />
+    </button>
+  )
+}
+
 export default function TopBar() {
   const { lang, setLang } = useLang()
   const { theme, setTheme, palette, setPalette, availablePalettes } = useTheme()
   const { nav, brand, githubUrl } = SITE_CONFIG
-
-  const LangButton = ({ target, label }: { target: Lang; label: string }) => (
-    <button
-      onClick={() => setLang(target)}
-      aria-pressed={lang === target}
-      className={`relative px-1.5 py-1 font-mono text-xs transition-colors press-sm ${
-        lang === target ? 'text-accent' : 'text-dim hover:text-paper'
-      }`}
-    >
-      {label}
-      {lang === target && (
-        <span className="bg-accent/15 absolute inset-0 -z-10 rounded-md" />
-      )}
-    </button>
-  )
 
   return (
     <header className="border-line bg-ink/80 fixed inset-x-0 top-0 z-40 border-b backdrop-blur-md transition-colors duration-500">
@@ -174,13 +201,7 @@ export default function TopBar() {
           {brand.name}
         </a>
         <div className="flex items-center gap-4 md:gap-5">
-          {nav.showLang && (
-            <nav className="flex items-center rounded-md border border-ink-2/20 p-0.5 font-mono" aria-label="Language">
-              <LangButton target="zh" label="中文" />
-              <span className="text-dim select-none px-0.5">/</span>
-              <LangButton target="en" label="EN" />
-            </nav>
-          )}
+          {nav.showLang && <LanguageToggle lang={lang} setLang={setLang} />}
           {nav.showTheme && (
             <>
               <ThemeToggle theme={theme} setTheme={setTheme} />

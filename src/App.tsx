@@ -101,13 +101,27 @@ function Shell() {
                 <TagFilter tags={allTags} activeTag={activeTag} onSelect={setActiveTag} />
               </div>
               <div className="border-line border-t" />
-              {filteredPosts.map((p) => (
-                <PostCard
-                  key={p.id}
-                  post={p}
-                  onSelect={() => setSelectedPost(p.id)}
+              <div className="relative isolate">
+                {filteredPosts.map((p) => (
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    onSelect={() => setSelectedPost(p.id)}
+                  />
+                ))}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 -z-[1] bg-ink-2/[0.04]"
+                  style={{
+                    backdropFilter: 'blur(14px)',
+                    WebkitBackdropFilter: 'blur(14px)',
+                    maskImage:
+                      'linear-gradient(to right, #000 0%, rgba(0,0,0,0.55) 30%, transparent 72%)',
+                    WebkitMaskImage:
+                      'linear-gradient(to right, #000 0%, rgba(0,0,0,0.55) 30%, transparent 72%)',
+                  }}
                 />
-              ))}
+              </div>
             </div>
           </>
         )}

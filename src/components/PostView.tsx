@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { codeToHtml } from 'shiki'
 import { gsap, useGSAP, SplitText, prefersReducedMotion } from '../lib/gsap'
 import { useLang } from '../i18n'
 import { type PostDef } from '../data/posts'
@@ -60,6 +61,59 @@ function MusicCard({ track }: { track: PostAudioTrack }) {
         {isCurrent && playing ? <Pause className="size-4" /> : <Play className="size-4" />}
       </span>
     </button>
+  )
+}
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const SHIKI_LIGHT = 'vitesse-light'
+const SHIKI_DARK = 'vitesse-dark'
+
+/** code block rendered with the CommentTerminal frosted-panel look.
+ *  Uses shiki for syntax highlighting (dual light/dark themes that follow
+ *  the site's `[data-theme]`). A fenced block with language `terminal`
+ *  becomes the custom terminal block (no highlighting). */
+function CodeBlock({ lang, content }: { lang: string; content: string }) {
+  const label = lang ? lang : 'code'
+  const isTerminal = lang.toLowerCase() === 'terminal'
+  const [html, setHtml] = useState<string>('')
+
+  useEffect(() => {
+    let cancelled = false
+    if (isTerminal) {
+      setHtml(`<pre class="shiki"><code>${escapeHtml(content)}</code></pre>`)
+      return
+    }
+    codeToHtml(content, {
+      lang: lang || 'text',
+      themes: { light: SHIKI_LIGHT, dark: SHIKI_DARK },
+    })
+      .then((out) => !cancelled && setHtml(out))
+      .catch(
+        () =>
+          !cancelled &&
+          setHtml(`<pre class="shiki"><code>${escapeHtml(content)}</code></pre>`),
+      )
+    return () => {
+      cancelled = true
+    }
+  }, [lang, content, isTerminal])
+
+  return (
+    <div className="not-prose my-5 overflow-hidden rounded-xl border border-line bg-ink/80 backdrop-blur-sm">
+      <div className="border-line flex items-center gap-2 border-b px-4 py-2 font-mono text-[10px] tracking-[0.25em] uppercase text-dim">
+        <span className="bg-accent inline-block size-2 rounded-full" />
+        {label}
+      </div>
+      {html ? (
+        <div dangerouslySetInnerHTML={{ __html: html }} />
+      ) : (
+        <pre className="overflow-x-auto p-4 text-xs leading-relaxed">
+          <code className="font-mono text-paper/90">{content}</code>
+        </pre>
+      )}
+    </div>
   )
 }
 
@@ -255,7 +309,7 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
         <button
           data-post-meta
           onClick={onBack}
-          className="text-dim hover:text-accent mb-8 flex items-center gap-2 font-mono text-xs tracking-[0.2em] transition-colors"
+          className="text-dim hover:text-accent mb-8 flex items-center gap-2 font-mono text-s tracking-[0.2em] transition-colors"
         >
           <ArrowLeft className="size-3.5" />
           {t('post.back')}
@@ -283,14 +337,12 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
           {t('post.published')} {post.date} · {post.readTime}
         </p>
 
-        <div
-          data-post-body
-          className="border-line mt-10 border-t pt-8"
-        >
-          <div
-            className="prose prose-invert max-w-none leading-relaxed text-sm md:text-base"
-            style={{ color: 'var(--color-paper)' }}
-          >
+        <div data-post-body className="mt-10">
+          <div className="rounded-xl border border-line bg-ink/40 p-6 backdrop-blur-sm md:p-10">
+            <div
+              className="prose prose-invert max-w-none leading-relaxed text-sm md:text-base"
+              style={{ color: 'var(--color-paper)' }}
+            >
             {blocks.map((b) => {
               if (b.kind === 'track') {
                 const track = tracksById.get(b.id)
@@ -309,14 +361,7 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
                 )
               }
               if (b.kind === 'code') {
-                return (
-          <pre
-            key={b.key}
-            className="my-5 overflow-x-auto rounded-xl border border-ink-2/20 bg-ink-2/40 p-4 text-xs leading-relaxed"
-          >
-                    <code className="font-mono text-paper/90">{b.content}</code>
-                  </pre>
-                )
+                return <CodeBlock key={b.key} lang={b.lang} content={b.content} />
               }
               return (
                 <ReactMarkdown
@@ -353,6 +398,7 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
             })}
           </div>
         </div>
+      </div>
 
         <button
           data-post-meta
