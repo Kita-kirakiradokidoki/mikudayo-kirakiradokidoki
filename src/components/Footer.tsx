@@ -42,7 +42,7 @@ export default function Footer() {
           <a
             href="#top"
             data-footer-title
-            className="text-outline hover:text-paper text-4xl font-bold tracking-tight uppercase transition-colors duration-300 sm:text-5xl md:text-7xl"
+            className="text-outline hover:text-gradient-accent text-4xl font-bold tracking-tight uppercase transition-all duration-300 ease-[var(--ease-out)] sm:text-5xl md:text-7xl"
           >
             {brand.name}
           </a>

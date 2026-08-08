@@ -78,12 +78,12 @@ export default function Hero() {
               {brand.titleWord2}
             </span>
             {heroCfg.showBadge && (
-              <span
-                data-hero-badge
-                className="bg-accent text-ink inline-block -rotate-3 px-3.5 py-2 font-mono text-[10px] font-bold tracking-[0.15em] whitespace-nowrap normal-case md:text-xs"
-              >
-                {t('hero.badge')}
-              </span>
+            <span
+              data-hero-badge
+              className="bg-gradient-accent text-ink inline-block -rotate-3 px-3.5 py-2 font-mono text-[10px] font-bold tracking-[0.15em] whitespace-nowrap normal-case shadow-lg shadow-accent/10 md:text-xs"
+            >
+              {t('hero.badge')}
+            </span>
             )}
           </span>
         </h1>

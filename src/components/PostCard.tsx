@@ -32,7 +32,10 @@ export default function PostCard({ post, onSelect }: { post: PostDef; onSelect: 
   )
 
   return (
-    <article ref={scope} className="border-line border-b py-10 md:py-14">
+    <article
+      ref={scope}
+      className="border-line border-b py-10 transition-all duration-300 ease-[var(--ease-out)] md:py-14 hover:border-accent/30 lift-sm"
+    >
       <div className="flex flex-col gap-4 md:flex-row md:gap-8">
         <span
           data-card-fade
@@ -51,13 +54,10 @@ export default function PostCard({ post, onSelect }: { post: PostDef; onSelect: 
               </span>
             ))}
           </div>
-          <button
-            onClick={onSelect}
-            className="text-left w-full"
-          >
+          <button onClick={onSelect} className="text-left w-full press-md">
             <h2
               data-card-title
-              className="text-2xl font-bold tracking-tight md:text-3xl"
+              className="text-2xl font-bold tracking-tight transition-colors duration-200 ease-[var(--ease-out)] md:text-3xl hover:text-accent"
             >
               {pick(post.title)}
             </h2>
@@ -65,16 +65,19 @@ export default function PostCard({ post, onSelect }: { post: PostDef; onSelect: 
           <p data-card-fade className="text-dim mt-3 max-w-2xl text-sm leading-relaxed md:text-base">
             {pick(post.excerpt)}
           </p>
-          <div data-card-fade className="mt-4 flex items-center gap-4 font-mono text-[11px] tracking-[0.15em]">
+          <div
+            data-card-fade
+            className="mt-4 flex items-center gap-4 font-mono text-[11px] tracking-[0.15em]"
+          >
             <span className="text-dim">{post.date}</span>
             <span className="text-accent">·</span>
             <span className="text-dim">{post.readTime}</span>
             <span className="text-accent">·</span>
             <button
               onClick={onSelect}
-              className="text-accent hover:text-paper transition-colors"
+              className="text-accent hover:text-paper inline-flex items-center gap-1 transition-colors duration-200 ease-[var(--ease-out)] press-sm"
             >
-              {t('post.readMore')} →
+              {t('post.readMore')} <span className="transition-transform duration-200 ease-[var(--ease-out)] group-hover:translate-x-0.5">→</span>
             </button>
           </div>
         </div>

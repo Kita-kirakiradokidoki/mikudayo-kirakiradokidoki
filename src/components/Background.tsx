@@ -27,8 +27,8 @@ export default function Background() {
         }}
       />
       <div
-        className="absolute inset-0"
-        style={{ background: `rgba(0, 0, 0, ${background.overlay})` }}
+        className="absolute inset-0 theme-transition"
+        style={{ background: 'var(--color-ink)', opacity: background.overlay }}
       />
     </div>
   )

@@ -20,7 +20,7 @@ const ScrollProgress = memo(function ScrollProgress() {
     <div
       ref={ref}
       aria-hidden
-      className="bg-accent fixed inset-x-0 top-0 z-50 h-0.5 origin-left scale-x-0"
+      className="bg-gradient-accent fixed inset-x-0 top-0 z-50 h-0.5 origin-left scale-x-0"
     />
   )
 })

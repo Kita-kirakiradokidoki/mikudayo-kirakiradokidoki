@@ -31,10 +31,10 @@ function MusicCard({ track }: { track: PostAudioTrack }) {
     <button
       onClick={handleClick}
       aria-label={isCurrent && playing ? '暂停' : '播放'}
-      className={`my-4 flex w-full max-w-md items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+      className={`my-4 flex w-full max-w-md items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 ease-[var(--ease-out)] ${
         isCurrent
-          ? 'border-accent/60 bg-ink-2'
-          : 'border-line bg-ink-2/60 hover:border-accent/40'
+          ? 'border-accent/60 bg-accent/[0.10]'
+          : 'border-line bg-ink-2/40 hover:border-accent/40 hover:bg-ink-2/60'
       }`}
     >
       {/* left: album cover */}
@@ -310,10 +310,10 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
               }
               if (b.kind === 'code') {
                 return (
-                  <pre
-                    key={b.key}
-                    className="my-5 overflow-x-auto rounded-lg border border-line bg-ink p-4 text-xs leading-relaxed"
-                  >
+          <pre
+            key={b.key}
+            className="my-5 overflow-x-auto rounded-xl border border-ink-2/20 bg-ink-2/40 p-4 text-xs leading-relaxed"
+          >
                     <code className="font-mono text-paper/90">{b.content}</code>
                   </pre>
                 )

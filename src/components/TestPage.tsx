@@ -3,13 +3,15 @@ import PostCard from './PostCard'
 import CommentTerminal from './CommentTerminal'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useTheme } from '../theme'
+import { useTheme, type ThemePref } from '../theme'
 import { useLang } from '../i18n'
+import { SITE_CONFIG, type PaletteId } from '../site.config'
 import type { PostDef } from '../data/posts'
 import {
   ArrowLeft,
   Moon,
   Sun,
+  Monitor,
   Play,
   Pause,
   Code2,
@@ -17,6 +19,7 @@ import {
   Volume2,
   Terminal,
   CreditCard,
+  Check,
 } from 'lucide-react'
 
 /* ---------- layout helpers ---------- */
@@ -44,10 +47,20 @@ function Section({
 function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`bg-ink-2/[0.06] divide-ink-2/[0.15] rounded-xl border border-ink-2/20 p-5 ${className}`}
+      className={`rounded-xl border border-ink-2/20 bg-ink-2/[0.06] p-5 ${className}`}
     >
       {children}
     </div>
+  )
+}
+
+function PaletteSwatch({ id }: { id: PaletteId }) {
+  const colors = SITE_CONFIG.colors[id].colors.dark
+  return (
+    <span
+      className="inline-block size-4 rounded-full border border-line"
+      style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}
+    />
   )
 }
 
@@ -70,7 +83,7 @@ const samplePost: PostDef = {
   audio: [],
 }
 
-/* ---------- custom inline markdown (bold / code / link) ---------- */
+/* ---------- custom inline markdown ---------- */
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = []
   const regex = /(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g
@@ -89,7 +102,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
       nodes.push(
         <code
           key={`${keyPrefix}-c${i}`}
-          className="bg-ink-2/20 rounded px-1.5 py-0.5 font-mono text-[0.85em] text-accent"
+          className="rounded-md bg-ink-2/20 px-1.5 py-0.5 font-mono text-[0.85em] text-accent"
         >
           {m[3]}
         </code>,
@@ -101,7 +114,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
           href={m[5]}
           target="_blank"
           rel="noreferrer"
-          className="text-accent underline underline-offset-2 hover:text-paper"
+          className="text-accent underline underline-offset-2 transition-colors hover:text-paper"
         >
           {m[4]}
         </a>,
@@ -114,7 +127,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   return nodes
 }
 
-/* ---------- custom block parser (track markers / headings / code) ---------- */
+/* ---------- custom block parser ---------- */
 type Block =
   | { kind: 'track'; id: string }
   | { kind: 'heading'; level: number; text: string }
@@ -137,7 +150,7 @@ function parseBlocks(md: string): Block[] {
       i++
       continue
     }
-    const hm = t.match(/^(#{1,3})\s+(.*)$/)
+    const hm = t.match(/^(#{1,3})\s+(.+)$/)
     if (hm) {
       blocks.push({ kind: 'heading', level: hm[1].length, text: hm[2] })
       i++
@@ -179,7 +192,6 @@ const customMdSample = `^demo-track-01^
 const greet = (name: string) => \`hello \${name}\`
 \`\`\``
 
-/* ---------- standard GFM sample ---------- */
 const gfmSample = `# GFM 标准解析
 支持 **粗体**、*斜体*、[链接](https://example.com)、\`行内代码\` 与 ~~删除线~~。
 
@@ -205,7 +217,7 @@ console.log(sum(1, 2))
 
 /* ============================================================ */
 export default function TestPage({ onExit }: { onExit: () => void }) {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, palette, setPalette, availablePalettes } = useTheme()
   const { lang, setLang, pick } = useLang()
 
   const [count, setCount] = useState(0)
@@ -230,28 +242,37 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
   return (
     <div className="min-h-[100dvh] pb-24">
       {/* header */}
-      <header className="bg-ink/80 sticky top-0 z-40 border-b border-ink-2/20 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-ink-2/20 bg-ink/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3 md:px-8">
           <div className="flex items-center gap-3">
             <button
               onClick={onExit}
-              className="text-paper/70 hover:text-paper flex items-center gap-1.5 text-sm transition-colors"
+              className="flex items-center gap-1.5 text-sm text-paper/70 transition-colors hover:text-paper press-sm"
             >
               <ArrowLeft size={16} /> 返回首页
             </button>
-            <span className="text-dim font-mono text-xs">/test</span>
+            <span className="font-mono text-xs text-dim">/test</span>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="border-ink-2/20 hover:bg-ink-2/10 rounded-md border p-2 transition-colors"
+              onClick={() => {
+                const order: ThemePref[] = ['system', 'light', 'dark']
+                const idx = order.indexOf(theme)
+                setTheme(order[(idx + 1) % order.length])
+              }}
+              className="flex items-center gap-1.5 rounded-md border border-ink-2/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-ink-2/10 press-sm"
               title="切换主题"
             >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'system' && <Monitor size={16} />}
+              {theme === 'light' && <Sun size={16} />}
+              {theme === 'dark' && <Moon size={16} />}
+              <span className="font-mono">
+                {theme === 'system' ? 'SYS' : theme === 'light' ? 'LIGHT' : 'DARK'}
+              </span>
             </button>
             <button
               onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
-              className="border-ink-2/20 hover:bg-ink-2/10 rounded-md border px-3 py-2 text-xs font-medium transition-colors"
+              className="rounded-md border border-ink-2/20 px-3 py-2 text-xs font-medium transition-colors hover:bg-ink-2/10 press-sm"
               title="切换语言"
             >
               {lang === 'zh' ? 'EN' : '中'}
@@ -260,20 +281,48 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
         </div>
       </header>
 
-      <div className="border-line border-t" />
+      <div className="border-t border-line" />
 
       <section className="mx-auto w-full max-w-5xl px-5 pt-16 md:px-8">
         <p className="text-accent font-mono text-xs uppercase tracking-[0.3em]">UI Kit</p>
-        <h1 className="text-paper mt-2 text-4xl font-bold tracking-tight md:text-5xl">
+        <h1 className="mt-2 text-4xl font-bold tracking-tight text-paper md:text-5xl">
           {pick({ zh: '组件测试页', en: 'Component Test Page' })}
         </h1>
-        <p className="text-dim mt-3 max-w-2xl leading-relaxed">
+        <p className="mt-3 max-w-2xl leading-relaxed text-dim">
           {pick({
             zh: '这里汇总了站点所有基础控件、自定义卡片，以及标准 / 自定义 Markdown 解析的演示。',
             en: 'A showcase of every basic control, custom card, and standard / custom markdown parsing.',
           })}
         </p>
       </section>
+
+      {/* ===== 调色板 ===== */}
+      <Section
+        id="00"
+        title={pick({ zh: '调色板', en: 'Palettes' })}
+        desc={pick({
+          zh: '点击切换全站配色方案；经典方案保留原有视觉。',
+          en: 'Click to switch the site color palette; the classic scheme preserves the original look.',
+        })}
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {availablePalettes.map((id) => (
+            <button
+              key={id}
+              onClick={() => setPalette(id)}
+              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-all duration-200 ease-[var(--ease-out)] press-sm ${
+                palette === id
+                  ? 'border-accent bg-accent/10'
+                  : 'border-ink-2/20 bg-ink-2/[0.06] hover:border-ink-2/40 hover:bg-ink-2/10'
+              }`}
+            >
+              <PaletteSwatch id={id} />
+              <span className="text-sm font-medium text-paper">{pick(SITE_CONFIG.colors[id].label)}</span>
+              {palette === id && <Check className="ml-auto size-4 text-accent" />}
+            </button>
+          ))}
+        </div>
+      </Section>
 
       {/* ===== 基础控件 ===== */}
       <Section
@@ -286,20 +335,20 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
       >
         <div className="grid gap-5 md:grid-cols-2">
           <Panel>
-            <p className="text-dim mb-3 text-xs font-medium uppercase tracking-wider">Buttons</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dim">Buttons</p>
             <div className="flex flex-wrap gap-3">
-              <button className="bg-accent text-ink rounded-md px-4 py-2 text-sm font-semibold transition-transform hover:scale-[1.03]">
+              <button className="rounded-md bg-gradient-accent px-4 py-2 text-sm font-semibold text-ink shadow-lg shadow-accent/10 transition-all duration-200 ease-[var(--ease-out)] hover:brightness-105 active:scale-95">
                 Primary
               </button>
-              <button className="border-ink-2/30 text-paper hover:bg-ink-2/10 rounded-md border px-4 py-2 text-sm transition-colors">
+              <button className="rounded-md border border-ink-2/30 px-4 py-2 text-sm text-paper transition-colors hover:border-ink-2/50 hover:bg-ink-2/10 press-sm">
                 Ghost
               </button>
-              <button className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20">
+              <button className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20 press-sm">
                 Danger
               </button>
               <button
                 onClick={() => setPlaying((v) => !v)}
-                className="border-ink-2/30 text-paper hover:bg-ink-2/10 flex items-center gap-2 rounded-md border px-4 py-2 text-sm transition-colors"
+                className="flex items-center gap-2 rounded-md border border-ink-2/30 px-4 py-2 text-sm text-paper transition-colors hover:bg-ink-2/10 press-sm"
               >
                 {playing ? <Pause size={15} /> : <Play size={15} />} {playing ? 'Pause' : 'Play'}
               </button>
@@ -307,16 +356,16 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
           </Panel>
 
           <Panel>
-            <p className="text-dim mb-3 text-xs font-medium uppercase tracking-wider">Inputs</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dim">Inputs</p>
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="bg-ink-2/10 border-ink-2/20 text-paper placeholder:text-dim w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-accent"
+              className="w-full rounded-md border border-ink-2/20 bg-ink-2/10 px-3 py-2 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-accent focus-ring"
               placeholder="Type something..."
             />
             <textarea
               rows={2}
-              className="bg-ink-2/10 border-ink-2/20 text-paper placeholder:text-dim mt-3 w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:border-accent"
+              className="mt-3 w-full resize-none rounded-md border border-ink-2/20 bg-ink-2/10 px-3 py-2 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-accent focus-ring"
               placeholder="Multiline..."
             />
             <div className="mt-3 flex items-center gap-2">
@@ -327,14 +376,14 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                 max={100}
                 value={volume}
                 onChange={(e) => setVolume(Number(e.target.value))}
-                className="accent-accent w-full"
+                className="w-full"
               />
-              <span className="text-dim w-9 text-right font-mono text-xs">{volume}</span>
+              <span className="w-9 text-right font-mono text-xs text-dim">{volume}</span>
             </div>
           </Panel>
 
           <Panel>
-            <p className="text-dim mb-3 text-xs font-medium uppercase tracking-wider">Toggles & Radios</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dim">Toggles & Radios</p>
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -362,12 +411,12 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
               <span className="text-sm">开关</span>
               <button
                 onClick={() => setToggle((v) => !v)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${
-                  toggle ? 'bg-accent' : 'bg-ink-2/30'
+                className={`relative h-6 w-11 rounded-full transition-colors duration-200 ease-[var(--ease-out)] ${
+                  toggle ? 'bg-gradient-accent' : 'bg-ink-2/30'
                 }`}
               >
                 <span
-                  className={`bg-ink absolute top-0.5 size-5 rounded-full transition-transform ${
+                  className={`absolute top-0.5 size-5 rounded-full bg-ink shadow-sm transition-transform duration-200 ease-[var(--ease-spring)] ${
                     toggle ? 'translate-x-[22px]' : 'translate-x-0.5'
                   }`}
                 />
@@ -376,7 +425,7 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
             <select
               value={select}
               onChange={(e) => setSelect(e.target.value)}
-              className="bg-ink-2/10 border-ink-2/20 text-paper mt-4 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-accent"
+              className="mt-4 w-full rounded-md border border-ink-2/20 bg-ink-2/10 px-3 py-2 text-sm text-paper outline-none transition-colors focus:border-accent focus-ring"
             >
               <option value="x">选项 X</option>
               <option value="y">选项 Y</option>
@@ -385,26 +434,26 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
           </Panel>
 
           <Panel>
-            <p className="text-dim mb-3 text-xs font-medium uppercase tracking-wider">States & Badges</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dim">States & Badges</p>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="bg-accent/15 text-accent rounded-full px-3 py-1 text-xs font-medium">
+              <span className="rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
                 #tag
               </span>
-              <span className="bg-ink-2/20 text-paper rounded-full px-3 py-1 text-xs">demo</span>
-              <span className="bg-green-500/15 text-green-400 rounded-full px-3 py-1 text-xs">在线</span>
-              <span className="bg-amber-500/15 text-amber-400 rounded-full px-3 py-1 text-xs">维护中</span>
+              <span className="rounded-full bg-ink-2/20 px-3 py-1 text-xs text-paper">demo</span>
+              <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs text-green-400">在线</span>
+              <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs text-amber-400">维护中</span>
             </div>
             <div className="mt-4 flex items-center gap-4">
               <span className="flex items-center gap-1.5 text-sm">
                 <span className="size-2 rounded-full bg-green-400" /> 状态点
               </span>
-              <Loader2 size={16} className="text-accent animate-spin" />
-              <span className="text-dim font-mono text-xs">loading...</span>
+              <Loader2 size={16} className="animate-spin-slow text-accent" />
+              <span className="font-mono text-xs text-dim">loading...</span>
             </div>
             <div className="mt-4">
               <button
                 onClick={() => setCount((c) => c + 1)}
-                className="bg-ink-2/15 text-paper hover:bg-ink-2/25 rounded-md px-4 py-2 text-sm transition-colors"
+                className="rounded-md bg-ink-2/15 px-4 py-2 text-sm text-paper transition-colors hover:bg-ink-2/25 press-sm"
               >
                 计数：{count}
               </button>
@@ -429,33 +478,33 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
 
           <div className="flex flex-col gap-5">
             <Panel className="!p-0 overflow-hidden">
-              <div className="bg-ink-2/10 flex items-center gap-3 border-b border-ink-2/20 px-4 py-3">
+              <div className="flex items-center gap-3 border-b border-ink-2/20 bg-ink-2/10 px-4 py-3">
                 <CreditCard size={16} className="text-accent" />
-                <span className="text-paper text-sm font-medium">Music Card (demo)</span>
+                <span className="text-sm font-medium text-paper">Music Card (demo)</span>
               </div>
               <div className="flex items-center gap-4 p-4">
-                <div className="bg-ink-2/20 size-14 shrink-0 rounded-lg" />
+                <div className="size-14 shrink-0 rounded-lg bg-ink-2/20" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-paper truncate text-sm font-semibold">Track Title</p>
-                  <p className="text-dim truncate text-xs">Artist · Album</p>
+                  <p className="truncate text-sm font-semibold text-paper">Track Title</p>
+                  <p className="truncate text-xs text-dim">Artist · Album</p>
                 </div>
-                <button className="bg-accent text-ink flex size-10 items-center justify-center rounded-full">
+                <button className="flex size-10 items-center justify-center rounded-full bg-gradient-accent text-ink shadow-lg transition-transform active:scale-95">
                   <Play size={16} />
                 </button>
               </div>
             </Panel>
 
             <Panel>
-              <p className="text-paper mb-2 text-sm font-semibold">Stat Card</p>
-              <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-ink-2/20 bg-ink-2/[0.08] divide-x divide-ink-2/[0.15]">
+              <p className="mb-2 text-sm font-semibold text-paper">Stat Card</p>
+              <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-ink-2/20 bg-ink-2/[0.08] divide-x divide-ink-2/[0.15]">
                 {[
                   ['69', 'Games'],
                   ['4019h', 'Played'],
                   ['Lv.18', 'Steam'],
                 ].map(([v, l]) => (
                   <div key={l} className="bg-transparent px-2 py-3 text-center">
-                    <div className="text-paper text-lg font-bold">{v}</div>
-                    <div className="text-dim text-[10px] uppercase tracking-wider">{l}</div>
+                    <div className="text-lg font-bold text-paper">{v}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-dim">{l}</div>
                   </div>
                 ))}
               </div>
@@ -464,9 +513,9 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
         </div>
 
         <Panel className="mt-5 !p-0 overflow-hidden">
-          <div className="bg-ink-2/10 flex items-center gap-3 border-b border-ink-2/20 px-4 py-3">
+          <div className="flex items-center gap-3 border-b border-ink-2/20 bg-ink-2/10 px-4 py-3">
             <Terminal size={16} className="text-accent" />
-            <span className="text-paper text-sm font-medium">CommentTerminal</span>
+            <span className="text-sm font-medium text-paper">CommentTerminal</span>
           </div>
           <CommentTerminal />
         </Panel>
@@ -487,33 +536,33 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
               remarkPlugins={[remarkGfm]}
               components={{
                 h1: ({ children }) => (
-                  <h1 className="text-paper mt-2 mb-3 text-2xl font-bold">{children}</h1>
+                  <h1 className="mb-3 mt-2 text-2xl font-bold text-paper">{children}</h1>
                 ),
                 h2: ({ children }) => (
-                  <h2 className="text-paper mt-5 mb-2 text-xl font-semibold">{children}</h2>
+                  <h2 className="mb-2 mt-5 text-xl font-semibold text-paper">{children}</h2>
                 ),
                 h3: ({ children }) => (
-                  <h3 className="text-paper mt-4 mb-2 text-lg font-semibold">{children}</h3>
+                  <h3 className="mb-2 mt-4 text-lg font-semibold text-paper">{children}</h3>
                 ),
-                p: ({ children }) => <p className="text-paper/80 my-2 leading-relaxed">{children}</p>,
+                p: ({ children }) => <p className="my-2 leading-relaxed text-paper/80">{children}</p>,
                 a: ({ href, children }) => (
                   <a
                     href={href}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-accent underline underline-offset-2 hover:text-paper"
+                    className="text-accent underline underline-offset-2 transition-colors hover:text-paper"
                   >
                     {children}
                   </a>
                 ),
                 ul: ({ children }) => (
-                  <ul className="text-paper/80 my-2 list-disc space-y-1 pl-5">{children}</ul>
+                  <ul className="my-2 list-disc space-y-1 pl-5 text-paper/80">{children}</ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="text-paper/80 my-2 list-decimal space-y-1 pl-5">{children}</ol>
+                  <ol className="my-2 list-decimal space-y-1 pl-5 text-paper/80">{children}</ol>
                 ),
                 blockquote: ({ children }) => (
-                  <blockquote className="border-accent/40 my-3 border-l-2 pl-3 text-paper/60 italic">
+                  <blockquote className="my-3 border-l-2 border-accent/40 pl-3 italic text-paper/60">
                     {children}
                   </blockquote>
                 ),
@@ -521,12 +570,12 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                   const inline = !className
                   if (inline)
                     return (
-                      <code className="bg-ink-2/20 rounded px-1.5 py-0.5 font-mono text-[0.85em] text-accent">
+                      <code className="rounded-md bg-ink-2/20 px-1.5 py-0.5 font-mono text-[0.85em] text-accent">
                         {children}
                       </code>
                     )
                   return (
-                    <pre className="bg-ink-2/15 my-3 overflow-x-auto rounded-lg border border-ink-2/20 p-3">
+                    <pre className="my-3 overflow-x-auto rounded-xl border border-ink-2/20 bg-ink-2/15 p-3">
                       <code className="font-mono text-sm text-paper/85">{children}</code>
                     </pre>
                   )
@@ -537,12 +586,12 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                   </div>
                 ),
                 th: ({ children }) => (
-                  <th className="border-ink-2/20 border px-3 py-1.5 text-left font-semibold">
+                  <th className="border border-ink-2/20 px-3 py-1.5 text-left font-semibold">
                     {children}
                   </th>
                 ),
                 td: ({ children }) => (
-                  <td className="border-ink-2/20 border px-3 py-1.5">{children}</td>
+                  <td className="border border-ink-2/20 px-3 py-1.5">{children}</td>
                 ),
               }}
             >
@@ -562,9 +611,9 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
         })}
       >
         <Panel className="!p-0 overflow-hidden">
-          <div className="bg-ink-2/10 flex items-center gap-3 border-b border-ink-2/20 px-4 py-3">
+          <div className="flex items-center gap-3 border-b border-ink-2/20 bg-ink-2/10 px-4 py-3">
             <Code2 size={16} className="text-accent" />
-            <span className="text-paper text-sm font-medium">parseBlocks() pipeline</span>
+            <span className="text-sm font-medium text-paper">parseBlocks() pipeline</span>
           </div>
           <div className="space-y-4 p-5">
             {blocks.map((b, i) => {
@@ -572,7 +621,7 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                 return (
                   <div
                     key={i}
-                    className="bg-accent/15 text-accent flex items-center gap-2 rounded-lg border border-accent/30 px-3 py-2 text-sm font-medium"
+                    className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/15 px-3 py-2 text-sm font-medium text-accent"
                   >
                     <Play size={14} /> track: {b.id}
                   </div>
@@ -594,20 +643,20 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                 return (
                   <pre
                     key={i}
-                    className="bg-ink-2/15 overflow-x-auto rounded-lg border border-ink-2/20 p-3"
+                    className="overflow-x-auto rounded-xl border border-ink-2/20 bg-ink-2/15 p-3"
                   >
                     <code className="font-mono text-sm text-paper/85">{b.code}</code>
                   </pre>
                 )
               return (
-                <p key={i} className="text-paper/80 leading-relaxed">
+                <p key={i} className="leading-relaxed text-paper/80">
                   {renderInline(b.text, `p${i}`)}
                 </p>
               )
             })}
           </div>
-          <pre className="bg-ink-2/15 border-ink-2/20 m-5 mt-0 overflow-x-auto rounded-lg border p-3">
-            <code className="text-dim font-mono text-xs">{customMdSample}</code>
+          <pre className="m-5 mt-0 overflow-x-auto rounded-xl border border-ink-2/20 bg-ink-2/15 p-3">
+            <code className="font-mono text-xs text-dim">{customMdSample}</code>
           </pre>
         </Panel>
       </Section>
@@ -625,7 +674,7 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
           {/* controls */}
           <Panel className="space-y-5">
             <div>
-              <p className="text-dim mb-2 text-xs font-medium uppercase tracking-wider">字体栈</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-dim">字体栈</p>
               <div className="grid grid-cols-2 gap-2">
                 {(
                   [
@@ -638,9 +687,9 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                   <button
                     key={key}
                     onClick={() => setFontStack(key)}
-                    className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                    className={`rounded-md border px-3 py-2 text-sm transition-all duration-200 ease-[var(--ease-out)] press-sm ${
                       fontStack === key
-                        ? 'border-accent text-paper bg-accent/10'
+                        ? 'border-accent bg-accent/10 text-paper'
                         : 'border-ink-2/20 text-dim hover:bg-ink-2/10'
                     }`}
                   >
@@ -651,9 +700,9 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
             </div>
 
             <div>
-              <div className="text-dim mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider">
+              <div className="mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-dim">
                 <span>字号</span>
-                <span className="text-paper/80 font-mono">{fontSize}px</span>
+                <span className="font-mono text-paper/80">{fontSize}px</span>
               </div>
               <input
                 type="range"
@@ -661,14 +710,14 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                 max={64}
                 value={fontSize}
                 onChange={(e) => setFontSize(Number(e.target.value))}
-                className="accent-accent w-full"
+                className="w-full"
               />
             </div>
 
             <div>
-              <div className="text-dim mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider">
+              <div className="mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-dim">
                 <span>字重</span>
-                <span className="text-paper/80 font-mono">{fontWeight}</span>
+                <span className="font-mono text-paper/80">{fontWeight}</span>
               </div>
               <input
                 type="range"
@@ -677,26 +726,26 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
                 step={100}
                 value={fontWeight}
                 onChange={(e) => setFontWeight(Number(e.target.value))}
-                className="accent-accent w-full"
+                className="w-full"
               />
             </div>
 
             <div>
-              <p className="text-dim mb-2 text-xs font-medium uppercase tracking-wider">预览文字</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-dim">预览文字</p>
               <textarea
                 rows={2}
                 value={sampleText}
                 onChange={(e) => setSampleText(e.target.value)}
-                className="bg-ink-2/10 border-ink-2/20 text-paper placeholder:text-dim w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:border-accent"
+                className="w-full resize-none rounded-md border border-ink-2/20 bg-ink-2/10 px-3 py-2 text-sm text-paper outline-none transition-colors placeholder:text-dim focus:border-accent focus-ring"
               />
             </div>
           </Panel>
 
           {/* preview */}
           <Panel className="flex flex-col">
-            <p className="text-dim mb-3 text-xs font-medium uppercase tracking-wider">预览</p>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dim">预览</p>
             <div
-              className="text-paper flex-1 leading-relaxed"
+              className="flex-1 leading-relaxed text-paper"
               style={{
                 fontFamily:
                   fontStack === 'sf'
@@ -712,19 +761,19 @@ export default function TestPage({ onExit }: { onExit: () => void }) {
             >
               {sampleText || ' '}
             </div>
-            <div className="text-dim mt-4 grid grid-cols-3 gap-3 border-t border-ink-2/20 pt-3 font-mono text-xs">
+            <div className="mt-4 grid grid-cols-3 gap-3 border-t border-ink-2/20 pt-3 font-mono text-xs text-dim">
               <div>
                 <span className="text-accent">Aa</span> 字母
               </div>
               <div>你苹方中文字重</div>
-              <div>0123456789</div>
+              <div>0123456780</div>
             </div>
           </Panel>
         </div>
       </Section>
 
-      <footer className="text-dim mt-10 text-center font-mono text-xs">
-        test page · {pick({ zh: '基础控件 / 自定义卡片 / MD 解析 / 自定义 MD 解析 / 字体对比', en: 'controls / cards / md / custom md / fonts' })}
+      <footer className="mt-10 text-center font-mono text-xs text-dim">
+        test page · {pick({ zh: '调色板 / 基础控件 / 自定义卡片 / MD 解析 / 自定义 MD 解析 / 字体对比', en: 'palettes / controls / cards / md / custom md / fonts' })}
       </footer>
     </div>
   )

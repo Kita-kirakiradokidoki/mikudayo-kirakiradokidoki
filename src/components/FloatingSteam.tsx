@@ -9,7 +9,13 @@ import {
   type SteamGame,
 } from '../lib/steam'
 
-const EASE = 'ease-[cubic-bezier(0.16,1,0.3,1)]'
+// Natural, non-linear expand/collapse motion.
+// `--ease-drawer` is an iOS-style strong ease-out (expands feel "springy"),
+// and we ease IN slower than OUT so a quick hover flick never stutters.
+// Animation runs at 0.75x speed → durations are ~1.33x longer than base.
+const EASE = 'var(--ease-drawer)'
+const DURATION_IN = '450ms'
+const DURATION_OUT = '270ms'
 
 /**
  * Failures that mean "there is no Steam proxy here" (static hosting, missing
@@ -48,24 +54,39 @@ export default function FloatingSteam() {
     <div
       onMouseEnter={() => setCollapsed(false)}
       onMouseLeave={() => setCollapsed(true)}
-      className={`relative z-50 origin-bottom-right scale-[1.2] overflow-hidden rounded-xl border bg-ink/80 shadow-xl backdrop-blur-md transition-[width,border-color] duration-[450ms] ${EASE} ${
+      className={`relative z-50 origin-bottom-right scale-[1.2] overflow-hidden rounded-2xl border bg-ink/80 shadow-xl backdrop-blur-md ${
         collapsed ? 'w-16 border-transparent' : 'w-[340px] border-ink-2/20'
       }`}
+      style={{
+        transitionProperty: 'width, border-color',
+        transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
+        transitionTimingFunction: EASE,
+      }}
     >
       {/* ── header: avatar + identity ───────────────────────────── */}
       <div
-        className={`flex items-stretch transition-[padding,column-gap] duration-[450ms] ${EASE} ${
-          collapsed ? 'gap-0 p-0' : 'gap-3 p-3'
-        }`}
+        className="flex items-stretch"
+        style={{
+          gap: collapsed ? '0px' : '12px',
+          padding: collapsed ? '0px' : '12px',
+          transitionProperty: 'gap, padding',
+          transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
+          transitionTimingFunction: EASE,
+        }}
       >
         <a
           href={profile?.profileUrl ?? 'https://steamcommunity.com/'}
           target="_blank"
           rel="noreferrer noopener"
           aria-label={t('steam.profileLink')}
-          className={`relative size-16 shrink-0 overflow-hidden bg-ink-2 transition-[border-radius] duration-[450ms] ${EASE} ${
-            collapsed ? '-m-px rounded-xl' : 'rounded-md border border-ink-2/20'
+          className={`relative size-16 shrink-0 overflow-hidden bg-ink-2 ${
+            collapsed ? '-m-px rounded-2xl' : 'rounded-xl border border-ink-2/20'
           }`}
+          style={{
+            transitionProperty: 'border-radius, border-color',
+            transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
+            transitionTimingFunction: EASE,
+          }}
         >
           {profile?.avatar ? (
             <img src={profile.avatar} alt="" className="size-full object-cover" />
@@ -81,9 +102,17 @@ export default function FloatingSteam() {
         </a>
 
         <div
-          className={`flex min-w-0 flex-col justify-center overflow-hidden transition-[width,opacity] duration-[450ms] ${EASE} ${
-            collapsed ? 'w-0 opacity-0' : 'w-[244px] opacity-100'
-          }`}
+          className="flex min-w-0 flex-col justify-center overflow-hidden"
+          style={{
+            width: collapsed ? '0px' : '244px',
+            opacity: collapsed ? 0 : 1,
+            transform: collapsed ? 'translateX(-10px)' : 'translateX(0px)',
+            transitionProperty: 'width, opacity, transform',
+            transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
+            transitionTimingFunction: EASE,
+            // identity slides in *after* the header has begun opening
+            transitionDelay: collapsed ? '0ms' : '90ms',
+          }}
         >
           <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-dim">
             {t('steam.title')}
@@ -119,14 +148,21 @@ export default function FloatingSteam() {
 
       {/* ── body: animated open/close via grid-rows ─────────────── */}
       <div
-        className={`grid transition-[grid-template-rows,opacity] duration-[450ms] ${EASE} ${
-          collapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
-        }`}
+        className="grid"
+        style={{
+          gridTemplateRows: collapsed ? '0fr' : '1fr',
+          opacity: collapsed ? 0 : 1,
+          transitionProperty: 'grid-template-rows, opacity',
+          transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
+          transitionTimingFunction: EASE,
+          // body drops open *after* the header, giving a layered reveal
+          transitionDelay: collapsed ? '0ms' : '120ms',
+        }}
       >
         <div className="overflow-hidden">
           <div className="space-y-3 px-3 pb-3">
             {error && !data && (
-              <p className="rounded-md border border-line bg-ink-2/40 px-2.5 py-2 font-mono text-[10px] leading-relaxed text-amber">
+              <p className="rounded-xl border border-line bg-ink-2/40 px-2.5 py-2 font-mono text-[10px] leading-relaxed text-amber">
                 {error.message}
               </p>
             )}
@@ -134,7 +170,7 @@ export default function FloatingSteam() {
             {data && (
               <>
                 {data.profile.playing && (
-                  <div className="flex items-center gap-2.5 rounded-md border border-accent/40 bg-accent/[0.15] p-2">
+                  <div className="flex items-center gap-2.5 rounded-xl border border-accent/40 bg-accent/10 p-2">
                     <img
                       src={data.profile.playing.capsule}
                       alt=""
@@ -153,7 +189,7 @@ export default function FloatingSteam() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-3 divide-x divide-ink-2/[0.15] overflow-hidden rounded-md border border-ink-2/20 bg-ink-2/[0.08]">
+                <div className="grid grid-cols-3 divide-x divide-ink-2/[0.15] overflow-hidden rounded-xl border border-ink-2/20 bg-ink-2/[0.08]">
                   <Stat label={t('steam.games')} value={String(data.stats.gameCount)} />
                   <Stat
                     label={t('steam.total')}
@@ -192,9 +228,11 @@ export default function FloatingSteam() {
                   disabled={refreshing}
                   aria-label={t('steam.refresh')}
                   title={t('steam.refresh')}
-                  className="grid size-6 place-items-center rounded text-dim transition-colors hover:text-accent disabled:opacity-40"
+                  className="grid size-6 place-items-center rounded text-dim transition-colors hover:text-accent disabled:opacity-40 press-sm"
                 >
-                  <RefreshCw className={`size-3 ${refreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`size-3 ${refreshing ? 'animate-spin-slow' : ''}`}
+                  />
                 </button>
                 <a
                   href={profile?.profileUrl ?? 'https://steamcommunity.com/'}
@@ -202,7 +240,7 @@ export default function FloatingSteam() {
                   rel="noreferrer noopener"
                   aria-label={t('steam.profileLink')}
                   title={t('steam.profileLink')}
-                  className="grid size-6 place-items-center rounded text-dim transition-colors hover:text-accent"
+                  className="grid size-6 place-items-center rounded text-dim transition-colors hover:text-accent press-sm"
                 >
                   <ExternalLink className="size-3" />
                 </a>
@@ -254,7 +292,7 @@ function GameList({
                 href={`https://store.steampowered.com/app/${game.appId}/`}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="flex items-center gap-2 rounded p-1 transition-colors hover:bg-ink-2/10"
+                className="flex items-center gap-2 rounded-lg p-1 transition-colors duration-200 ease-[var(--ease-out)] hover:bg-ink-2/10"
               >
                 <img
                   src={game.capsule}

@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
  */
 export default function FloatingLayer({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col-reverse items-end gap-4">
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col-reverse items-end gap-6">
       {children}
     </div>
   )

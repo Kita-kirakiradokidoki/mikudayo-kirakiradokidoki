@@ -61,7 +61,7 @@ const CommentMarquee = memo(function CommentMarquee() {
 
   return (
     <div ref={scope} aria-hidden className="pointer-events-none relative z-10 -my-4 overflow-hidden">
-      <div className="bg-accent text-night overflow-hidden py-2.5">
+      <div className="bg-gradient-accent text-night overflow-hidden py-2.5">
         <div
           data-marquee-track
           className="flex w-max font-mono text-xs font-bold tracking-[0.2em] uppercase"

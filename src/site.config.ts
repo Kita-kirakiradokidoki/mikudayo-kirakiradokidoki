@@ -1,14 +1,28 @@
+export type Bilingual = { zh: string; en: string }
+
 export type ThemeColors = {
   ink: string
   ink2: string
   paper: string
   dim: string
   accent: string
+  accent2: string
   amber: string
   line: string
   gridLine: string
   strokeFaint: string
 }
+
+export type Palette = {
+  id: PaletteId
+  label: Bilingual
+  colors: {
+    dark: ThemeColors
+    light: ThemeColors
+  }
+}
+
+export type PaletteId = 'classic' | 'aurora' | 'ember' | 'sakura'
 
 export type SiteConfig = {
   brand: {
@@ -17,10 +31,7 @@ export type SiteConfig = {
     titleWord1: string
     titleWord2: string
   }
-  colors: {
-    dark: ThemeColors
-    light: ThemeColors
-  }
+  colors: Record<PaletteId, Palette>
   githubUrl: string
   nav: {
     showLang: boolean
@@ -82,27 +93,128 @@ export const SITE_CONFIG: SiteConfig = {
   },
 
   colors: {
-    dark: {
-      ink: '#f5f5f0',
-      ink2: '#0a0a0f',
-      paper: '#0f0f17',
-      dim: '#a0a0b0',
-      accent: '#d4ff1f',
-      amber: '#ffb347',
-      line: 'rgb(245 245 240 / 0.15)',
-      gridLine: 'rgb(245 245 240 / 0.06)',
-      strokeFaint: 'rgb(245 245 240 / 0.22)',
+    classic: {
+      id: 'classic',
+      label: { zh: '经典', en: 'Classic' },
+      colors: {
+        dark: {
+          ink: '#0f0f17',
+          ink2: '#14141f',
+          paper: '#f5f5f0',
+          dim: '#a0a0b0',
+          accent: '#d4ff1f',
+          accent2: '#4ff0b7',
+          amber: '#ffb347',
+          line: 'rgb(245 245 240 / 0.15)',
+          gridLine: 'rgb(245 245 240 / 0.06)',
+          strokeFaint: 'rgb(245 245 240 / 0.22)',
+        },
+        light: {
+          ink: '#fcfcf7',
+          ink2: '#f4f4ee',
+          paper: '#111118',
+          dim: '#6b6b78',
+          accent: '#84a300',
+          accent2: '#5a9b6e',
+          amber: '#d48400',
+          line: 'rgb(17 17 24 / 0.18)',
+          gridLine: 'rgb(17 17 24 / 0.07)',
+          strokeFaint: 'rgb(17 17 24 / 0.2)',
+        },
+      },
     },
-    light: {
-      ink: '#111118',
-      ink2: '#fafaf5',
-      paper: '#fcfcf7',
-      dim: '#6b6b78',
-      accent: '#84a300',
-      amber: '#d48400',
-      line: 'rgb(17 17 24 / 0.18)',
-      gridLine: 'rgb(17 17 24 / 0.07)',
-      strokeFaint: 'rgb(17 17 24 / 0.2)',
+
+    aurora: {
+      id: 'aurora',
+      label: { zh: '极光', en: 'Aurora' },
+      colors: {
+        dark: {
+          ink: '#081018',
+          ink2: '#0d1a25',
+          paper: '#f0f7fa',
+          dim: '#8aa0ad',
+          accent: '#2dd4bf',
+          accent2: '#60a5fa',
+          amber: '#fbbf24',
+          line: 'rgb(240 247 250 / 0.16)',
+          gridLine: 'rgb(240 247 250 / 0.07)',
+          strokeFaint: 'rgb(240 247 250 / 0.24)',
+        },
+        light: {
+          ink: '#f4f9fb',
+          ink2: '#e8f1f5',
+          paper: '#0a151c',
+          dim: '#5a7280',
+          accent: '#0d9488',
+          accent2: '#2563eb',
+          amber: '#b45309',
+          line: 'rgb(10 21 28 / 0.16)',
+          gridLine: 'rgb(10 21 28 / 0.07)',
+          strokeFaint: 'rgb(10 21 28 / 0.22)',
+        },
+      },
+    },
+
+    ember: {
+      id: 'ember',
+      label: { zh: '余烬', en: 'Ember' },
+      colors: {
+        dark: {
+          ink: '#120a0a',
+          ink2: '#1e1212',
+          paper: '#faf2ef',
+          dim: '#b89a94',
+          accent: '#fb923c',
+          accent2: '#f87171',
+          amber: '#fcd34d',
+          line: 'rgb(250 242 239 / 0.16)',
+          gridLine: 'rgb(250 242 239 / 0.07)',
+          strokeFaint: 'rgb(250 242 239 / 0.24)',
+        },
+        light: {
+          ink: '#fff8f5',
+          ink2: '#f7ece7',
+          paper: '#1a0f0d',
+          dim: '#8b6f6a',
+          accent: '#c2410c',
+          accent2: '#dc2626',
+          amber: '#a16207',
+          line: 'rgb(26 15 13 / 0.16)',
+          gridLine: 'rgb(26 15 13 / 0.07)',
+          strokeFaint: 'rgb(26 15 13 / 0.22)',
+        },
+      },
+    },
+
+    sakura: {
+      id: 'sakura',
+      label: { zh: '樱色', en: 'Sakura' },
+      colors: {
+        dark: {
+          ink: '#120a12',
+          ink2: '#1e1420',
+          paper: '#faf2f8',
+          dim: '#c6a8be',
+          accent: '#f472b6',
+          accent2: '#a78bfa',
+          amber: '#fde047',
+          line: 'rgb(250 242 248 / 0.16)',
+          gridLine: 'rgb(250 242 248 / 0.07)',
+          strokeFaint: 'rgb(250 242 248 / 0.24)',
+        },
+        light: {
+          ink: '#fcf6fa',
+          ink2: '#f5ecf2',
+          paper: '#1a0f18',
+          dim: '#8f6f87',
+          accent: '#db2777',
+          accent2: '#7c3aed',
+          amber: '#a16207',
+          line: 'rgb(26 15 24 / 0.16)',
+          gridLine: 'rgb(26 15 24 / 0.07)',
+          strokeFaint: 'rgb(26 15 24 / 0.22)',
+        },
+      },
     },
   },
 
