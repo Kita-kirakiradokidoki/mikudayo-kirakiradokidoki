@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ExternalLink, Music, RefreshCw } from 'lucide-react'
-import { useLang, type StringKey } from '../i18n'
+import { useLang } from '../i18n'
 import { SITE_CONFIG } from '../site.config'
 import { useNeteaseRecord, formatAgo, type NeteaseRecordItem } from '../lib/netease'
 

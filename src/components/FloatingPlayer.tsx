@@ -24,7 +24,7 @@ const DURATION_OUT = '350ms'
 const DEBOUNCE_MS = 400
 
 export default function FloatingPlayer() {
-  const { t, lang } = useLang()
+  const { t } = useLang()
   const {
     available,
     playing,
