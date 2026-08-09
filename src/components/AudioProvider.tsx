@@ -32,6 +32,8 @@ type AudioCtx = {
   muted: boolean
   toggleMute: () => void
   meta: TrackMeta
+  /** true when the local-BGM fallback is available (NetEase off) */
+  showLocalBgm: boolean
 }
 
 function clamp01(v: number) {
@@ -86,6 +88,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     // single home track loops itself; multi-track playlist advances on "ended"
     el.loop = !isOverride && homeCount <= 1
     el.preload = 'auto'
+    el.crossOrigin = 'anonymous'  // 允许播放跨域音频 URL（网易云 CDN）
     el.volume = volumeRef.current
     el.muted = mutedRef.current
     el.addEventListener('play', () => setPlaying(true))
@@ -184,6 +187,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         muted,
         toggleMute,
         meta: current ?? EMPTY_META,
+        showLocalBgm: Boolean(!SITE_CONFIG.netease.enabled && available),
       }}
     >
       {children}

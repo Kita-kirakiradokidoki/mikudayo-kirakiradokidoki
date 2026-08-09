@@ -1,7 +1,15 @@
-import { useState } from 'react'
-import { Play, Pause, Music, Volume2, VolumeX } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Play, Pause, Music, Volume2, VolumeX, Search } from 'lucide-react'
 import { useBgm } from './AudioProvider'
-import { withBase } from '../lib/base'
+import { SITE_CONFIG } from '../site.config'
+import { useLang } from '../i18n'
+import {
+  fetchNeteaseSearch,
+  fetchNeteaseSongUrl,
+  fetchNeteasePlaylist,
+  type NeteaseSong,
+  type NeteasePlaylist,
+} from '../lib/netease'
 
 function fmt(t: number) {
   if (!isFinite(t) || t < 0) t = 0
@@ -10,15 +18,13 @@ function fmt(t: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// Collapse motion mirrors FloatingSteam: width-only transition with an
-// iOS-style strong ease-out. Height follows content (auto) so the cover is
-// never clipped. Avatar uses inline `borderWidth` so the collapsed state has
-// no border (otherwise the base `border` 1px would clip the 64px cover).
 const EASE = 'var(--ease-drawer)'
 const DURATION_IN = '450ms'
 const DURATION_OUT = '350ms'
+const DEBOUNCE_MS = 400
 
 export default function FloatingPlayer() {
+  const { t, lang } = useLang()
   const {
     available,
     playing,
@@ -31,10 +37,108 @@ export default function FloatingPlayer() {
     muted,
     toggleMute,
     meta,
+    setTrack,
+    showLocalBgm,
   } = useBgm()
-  const [collapsed, setCollapsed] = useState(true)
 
-  if (!available) return null
+  const cfg = SITE_CONFIG.netease
+  const neteaseEnabled = cfg.enabled
+
+  const [collapsed, setCollapsed] = useState(true)
+  const [searchKw, setSearchKw] = useState('')
+  const [searchResults, setSearchResults] = useState<NeteaseSong[]>([])
+  const [searching, setSearching] = useState(false)
+
+  // playlist state
+  const [playlists, setPlaylists] = useState<NeteasePlaylist[]>([])
+  const [activePlaylistIdx, setActivePlaylistIdx] = useState(0)
+  const [playlistSongs, setPlaylistSongs] = useState<NeteaseSong[]>([])
+  const [loadingPlaylist, setLoadingPlaylist] = useState(false)
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // load initial playlists
+  useEffect(() => {
+    if (!neteaseEnabled || cfg.playlistIds.length === 0) return
+    let cancelled = false
+    const load = async () => {
+      setLoadingPlaylist(true)
+      const results = await Promise.allSettled(
+        cfg.playlistIds.map((id) => fetchNeteasePlaylist(id)),
+      )
+      if (cancelled) return
+      const loaded = results
+        .filter((r): r is PromiseFulfilledResult<NeteasePlaylist> => r.status === 'fulfilled')
+        .map((r) => r.value)
+      setPlaylists(loaded)
+      setLoadingPlaylist(false)
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [neteaseEnabled, cfg.playlistIds])
+
+  // when active playlist changes, show its tracks
+  useEffect(() => {
+    if (playlists.length > 0 && activePlaylistIdx < playlists.length) {
+      setPlaylistSongs(playlists[activePlaylistIdx].tracks)
+    }
+  }, [playlists, activePlaylistIdx])
+
+  // debounced search
+  const doSearch = useCallback(
+    (kw: string) => {
+      if (!kw.trim()) {
+        setSearchResults([])
+        return
+      }
+      setSearching(true)
+      fetchNeteaseSearch(kw, 20)
+        .then(setSearchResults)
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false))
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => doSearch(searchKw), DEBOUNCE_MS)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [searchKw, doSearch])
+
+  const playSong = useCallback(
+    async (song: NeteaseSong) => {
+      try {
+        let url = await fetchNeteaseSongUrl(song.id, 320000)
+        if (!url) {
+          url = await fetchNeteaseSongUrl(song.id, 128000)
+        }
+        if (url) {
+          setTrack({
+            title: song.name,
+            artist: song.artist,
+            cover: song.cover,
+            url,
+          })
+        }
+      } catch {
+        // ignore — song won't play
+      }
+    },
+    [setTrack],
+  )
+
+  // Determine which track list to show
+  const displaySongs: NeteaseSong[] = searchKw.trim() ? searchResults : playlistSongs
+  const showList = neteaseEnabled && !collapsed
+
+  // When NetEase is off AND local BGM is available, show local player
+  const showLocal = !neteaseEnabled && showLocalBgm
+
+  if (!showLocal && !neteaseEnabled) return null
+  if (!available && !neteaseEnabled) return null
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0
 
@@ -49,130 +153,213 @@ export default function FloatingPlayer() {
         transitionProperty: 'width, border-color',
         transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
         transitionTimingFunction: EASE,
-        // inline width beats the base `border` class so collapsed has no border
         borderWidth: collapsed ? '0px' : '1px',
       }}
     >
       <div
-        className="flex items-stretch"
+        className="flex flex-col"
         style={{
-          gap: collapsed ? '0px' : '12px',
-          padding: collapsed ? '0px' : '12px',
+          gap: collapsed ? '0px' : '8px',
+          padding: collapsed ? '0px' : '10px',
           transitionProperty: 'gap, padding',
           transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
           transitionTimingFunction: EASE,
         }}
       >
-        {/* left: square album cover (fixed size in both states) */}
-        <button
-          onClick={toggle}
-          aria-label={playing ? '暂停' : '播放'}
-          className={`relative size-16 shrink-0 overflow-hidden bg-ink-2 press-md ${
-            collapsed ? 'rounded-2xl' : 'rounded-xl border border-ink-2/20'
-          }`}
-          style={{
-            transitionProperty: 'border-radius, border-color',
-            transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
-            transitionTimingFunction: EASE,
-          }}
-        >
-          {meta.cover ? (
-            <img src={withBase(meta.cover)} alt="" className="size-full object-cover" />
-          ) : (
-            <span className="grid size-full place-items-center text-accent">
-              <Music className="size-6" />
-            </span>
-          )}
+        {/* ── top row: cover + info (always visible) ────────────── */}
+        <div className="flex items-stretch" style={{ gap: collapsed ? '0px' : '12px' }}>
+          <button
+            onClick={toggle}
+            aria-label={playing ? '暂停' : '播放'}
+            className={`relative size-16 shrink-0 overflow-hidden bg-ink-2 press-md ${
+              collapsed ? 'rounded-2xl' : 'rounded-xl border border-ink-2/20'
+            }`}
+            style={{
+              transitionProperty: 'border-radius, border-color',
+              transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
+              transitionTimingFunction: EASE,
+            }}
+          >
+            {meta.cover ? (
+              <img src={meta.cover} alt="" className="size-full object-cover" />
+            ) : (
+              <span className="grid size-full place-items-center text-accent">
+                <Music className="size-6" />
+              </span>
+            )}
 
-          {/* playback progress: only when collapsed, 5px from the bottom inner edge */}
-          {collapsed && (
-            <span className="absolute inset-x-[5px] bottom-[5px] block h-[3px] rounded-full bg-black/40">
-              <span
-                className="bg-gradient-accent block h-full rounded-full"
-                style={{ width: `${pct}%` }}
-              />
-            </span>
-          )}
-        </button>
+            {/* collapsed progress bar */}
+            {collapsed && (
+              <span className="absolute inset-x-[5px] bottom-[5px] block h-[3px] rounded-full bg-black/40">
+                <span
+                  className="bg-gradient-accent block h-full rounded-full"
+                  style={{ width: `${pct}%` }}
+                />
+              </span>
+            )}
+          </button>
 
-        {/* right: title / progress / controls (animated in/out) */}
-        <div
-          className="flex min-w-0 flex-col overflow-hidden"
-          style={{
-            width: collapsed ? '0px' : '220px',
-            height: collapsed ? '0px' : 'auto',
-            opacity: collapsed ? 0 : 1,
-            transform: collapsed ? 'translateX(-10px)' : 'translateX(0px)',
-            transitionProperty: 'width, height, opacity, transform',
-            transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
-            transitionTimingFunction: EASE,
-            // content slides in *after* the shell has begun opening
-            transitionDelay: collapsed ? '0ms' : '90ms',
-          }}
-        >
-          <p className="truncate text-center font-mono text-xs tracking-wide text-paper">
-            {meta.title}
-          </p>
-          {meta.artist && (
-            <p className="truncate text-center font-mono text-[10px] text-dim">{meta.artist}</p>
-          )}
+          {/* info panel */}
+          <div
+            className="flex min-w-0 flex-col overflow-hidden"
+            style={{
+              width: collapsed ? '0px' : '212px',
+              height: collapsed ? '0px' : 'auto',
+              opacity: collapsed ? 0 : 1,
+              transform: collapsed ? 'translateX(-10px)' : 'translateX(0px)',
+              transitionProperty: 'width, height, opacity, transform',
+              transitionDuration: collapsed ? DURATION_OUT : DURATION_IN,
+              transitionTimingFunction: EASE,
+              transitionDelay: collapsed ? '0ms' : '60ms',
+            }}
+          >
+            <p className="truncate font-mono text-xs tracking-wide text-paper">
+              {meta.title}
+            </p>
+            {meta.artist && (
+              <p className="truncate font-mono text-[10px] text-dim">{meta.artist}</p>
+            )}
 
-          <div className="mt-2 flex items-center gap-2">
-            <span className="w-8 text-right font-mono text-[10px] text-dim">{fmt(currentTime)}</span>
-            <input
-              type="range"
-              min={0}
-              max={duration || 0}
-              step={0.1}
-              value={currentTime}
-              onChange={(e) => seek(Number(e.target.value))}
-              className="h-1 flex-1"
-              aria-label="播放进度"
-            />
-            <span className="w-8 font-mono text-[10px] text-dim">{fmt(duration)}</span>
-          </div>
-
-          <div className="mt-2 flex items-center justify-center gap-3">
-            <button
-              onClick={toggle}
-              aria-label={playing ? '暂停' : '播放'}
-              className="bg-gradient-accent grid size-9 shrink-0 place-items-center rounded-full text-ink shadow-lg transition-transform duration-150 ease-[var(--ease-out)] hover:scale-105 active:scale-95"
-            >
-              {playing ? (
-                <Pause className="size-4" />
-              ) : (
-                <Play className="size-4 translate-x-[1px]" />
-              )}
-            </button>
-
-            {/* volume control + mute toggle */}
-            <div className="flex min-w-0 items-center gap-1.5">
-              <button
-                onClick={toggleMute}
-                aria-label={muted ? '取消静音' : '静音'}
-                aria-pressed={muted}
-                className={`shrink-0 transition-colors press-sm ${
-                  muted ? 'text-amber' : 'text-dim hover:text-paper'
-                }`}
-              >
-                {muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
-              </button>
+            {/* progress bar */}
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="w-8 text-right font-mono text-[10px] text-dim">
+                {fmt(currentTime)}
+              </span>
               <input
                 type="range"
                 min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
-                className="h-1 w-16"
-                aria-label="音量"
+                max={duration || 0}
+                step={0.1}
+                value={currentTime}
+                onChange={(e) => seek(Number(e.target.value))}
+                className="h-1 flex-1"
+                aria-label="播放进度"
               />
-              <span className="w-7 shrink-0 font-mono text-[10px] text-dim">
-                {Math.round(volume * 100)}%
+              <span className="w-8 font-mono text-[10px] text-dim">
+                {fmt(duration)}
               </span>
+            </div>
+
+            {/* play + volume controls */}
+            <div className="mt-1.5 flex items-center justify-center gap-3">
+              <button
+                onClick={toggle}
+                aria-label={playing ? '暂停' : '播放'}
+                className="bg-gradient-accent grid size-8 shrink-0 place-items-center rounded-full text-ink shadow-lg transition-transform duration-150 ease-[var(--ease-out)] hover:scale-105 active:scale-95"
+              >
+                {playing ? (
+                  <Pause className="size-3.5" />
+                ) : (
+                  <Play className="size-3.5 translate-x-[1px]" />
+                )}
+              </button>
+
+              <div className="flex min-w-0 items-center gap-1.5">
+                <button
+                  onClick={toggleMute}
+                  aria-label={muted ? '取消静音' : '静音'}
+                  className={`shrink-0 transition-colors press-sm ${
+                    muted ? 'text-amber' : 'text-dim hover:text-paper'
+                  }`}
+                >
+                  {muted ? <VolumeX className="size-3" /> : <Volume2 className="size-3" />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  className="h-1 w-14"
+                  aria-label="音量"
+                />
+                <span className="w-6 shrink-0 font-mono text-[10px] text-dim">
+                  {Math.round(volume * 100)}%
+                </span>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* ── expanded section: search + song list (NetEase only) ── */}
+        {showList && (
+          <div className="flex flex-col gap-2 overflow-hidden">
+            {/* search bar */}
+            <div className="flex items-center gap-2 rounded-lg border border-ink-2/20 bg-ink-2/40 px-2.5 py-1.5">
+              <Search className="size-3.5 shrink-0 text-dim" />
+              <input
+                type="text"
+                value={searchKw}
+                onChange={(e) => setSearchKw(e.target.value)}
+                placeholder={t('netease.search')}
+                className="flex-1 bg-transparent font-mono text-[11px] text-paper placeholder:text-dim/60 outline-none"
+              />
+              {searching && (
+                <span className="size-3 shrink-0 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+              )}
+            </div>
+
+            {/* playlist tabs (only when not searching) */}
+            {!searchKw.trim() && playlists.length > 0 && (
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                {playlists.map((pl, idx) => (
+                  <button
+                    key={pl.id}
+                    onClick={() => setActivePlaylistIdx(idx)}
+                    className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-[10px] transition-colors press-sm ${
+                      idx === activePlaylistIdx
+                        ? 'bg-accent/20 text-accent'
+                        : 'bg-ink-2/40 text-dim hover:text-paper'
+                    }`}
+                  >
+                    {loadingPlaylist ? '…' : pl.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* song list */}
+            <div className="max-h-[200px] overflow-y-auto no-scrollbar -mx-1">
+              {displaySongs.length === 0 ? (
+                <p className="px-1 py-4 text-center font-mono text-[10px] text-dim">
+                  {searchKw.trim()
+                    ? t('netease.noResults')
+                    : loadingPlaylist
+                      ? t('netease.loading')
+                      : t('netease.noResults')}
+                </p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {displaySongs.map((song) => (
+                    <li key={song.id}>
+                      <button
+                        onClick={() => { void playSong(song) }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors duration-200 ease-[var(--ease-out)] hover:bg-ink-2/10 press-sm"
+                      >
+                        <img
+                          src={song.cover}
+                          alt=""
+                          loading="lazy"
+                          className="size-8 shrink-0 rounded object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-[11px] text-paper">
+                          {song.name}
+                        </span>
+                        <span className="max-w-[90px] shrink-0 truncate font-mono text-[10px] text-dim">
+                          {song.artist}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

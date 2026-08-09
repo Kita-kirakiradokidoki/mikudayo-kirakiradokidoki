@@ -69,6 +69,18 @@ export type SiteConfig = {
     /** override when the proxy is hosted on another origin */
     apiBase: string
   }
+  netease: {
+    /** master switch for the NetEase card + player */
+    enabled: boolean
+    /** your NetEase Cloud Music user ID */
+    uid: number
+    /** playlist IDs to show as recommended tabs */
+    playlistIds: number[]
+    /** polling interval in seconds */
+    refreshSeconds: number
+    /** override when the proxy is hosted on another origin */
+    apiBase: string
+  }
   grid: {
     enabled: boolean
   }
@@ -257,6 +269,14 @@ export const SITE_CONFIG: SiteConfig = {
     apiBase: '/api/steam',
   },
 
+  netease: {
+    enabled: true,
+    uid: 0,  // 替换为你的网易云音乐用户 ID
+    playlistIds: [],  // 替换为你的推荐歌单 ID 列表
+    refreshSeconds: 60,
+    apiBase: '/api/netease',
+  },
+
   grid: {
     enabled: false,
   },
@@ -308,6 +328,20 @@ export const SITE_CONFIG: SiteConfig = {
       'steam.state.snooze': '打盹',
       'steam.state.trade': '想交易',
       'steam.state.play': '想玩游戏',
+      'netease.title': '网易云音乐',
+      'netease.loading': '正在连接…',
+      'netease.error': '暂时拿不到数据',
+      'netease.playing': '正在听',
+      'netease.recent': '最近在听',
+      'netease.noRecent': '最近没有听歌记录',
+      'netease.refresh': '立即刷新',
+      'netease.profileLink': '打开网易云主页',
+      'netease.updated': '更新于',
+      'netease.search': '搜索歌曲或歌手…',
+      'netease.noResults': '没有找到相关歌曲',
+      'netease.playlists': '推荐歌单',
+      'netease.lyrics': '歌词',
+      'netease.noLyrics': '暂无歌词',
       'footer.tagline': '咕咕嘎嘎？',
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
     },
@@ -350,6 +384,20 @@ export const SITE_CONFIG: SiteConfig = {
       'steam.state.snooze': 'Snooze',
       'steam.state.trade': 'Looking to trade',
       'steam.state.play': 'Looking to play',
+      'netease.title': 'NetEase Music',
+      'netease.loading': 'Connecting…',
+      'netease.error': 'Data unavailable',
+      'netease.playing': 'Now playing',
+      'netease.recent': 'Recently played',
+      'netease.noRecent': 'No recent plays',
+      'netease.refresh': 'Refresh now',
+      'netease.profileLink': 'Open NetEase profile',
+      'netease.updated': 'updated',
+      'netease.search': 'Search songs or artists…',
+      'netease.noResults': 'No songs found',
+      'netease.playlists': 'Playlists',
+      'netease.lyrics': 'Lyrics',
+      'netease.noLyrics': 'No lyrics available',
       'footer.tagline': 'I am a PlaceHolder',
       'footer.built': 'Built with React · GSAP · Tailwind · Bun.',
     },

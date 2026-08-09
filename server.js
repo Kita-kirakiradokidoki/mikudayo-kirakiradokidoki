@@ -2,8 +2,9 @@ import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { loadEnv } from './server/env.mjs'
-import { steamApi } from './server/api.mjs'
+import { steamApi, neteaseApi } from './server/api.mjs'
 import { isConfigured } from './server/steam.mjs'
+import { isNeteaseConfigured } from './server/netease.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -14,6 +15,7 @@ const PORT = process.env.PORT || 3000
 
 // Steam Web API proxy (keeps STEAM_API_KEY server-side)
 app.use(steamApi())
+app.use(neteaseApi())
 
 // Gzip 压缩
 app.use(express.static(path.join(__dirname, 'dist'), {
@@ -34,5 +36,8 @@ app.listen(PORT, () => {
   console.log(`NAGI BLOG running at http://localhost:${PORT}`)
   if (!isConfigured()) {
     console.warn('[steam-api] STEAM_API_KEY missing — the Steam card stays hidden.')
+  }
+  if (!isNeteaseConfigured()) {
+    console.warn('[netease-api] NETEASE_COOKIE missing — search/play still works but quality may be lower.')
   }
 })

@@ -16,6 +16,7 @@ import GridSpotlight from './components/GridSpotlight'
 import Background from './components/Background'
 import FloatingPlayer from './components/FloatingPlayer'
 import FloatingSteam from './components/FloatingSteam'
+import FloatingNetease from './components/FloatingNetease'
 import FloatingLayer from './components/FloatingLayer'
 import TestPage from './components/TestPage'
 import { AudioProvider, useBgm } from './components/AudioProvider'
@@ -80,6 +81,7 @@ function Shell() {
         <TestPage onExit={() => (window.location.pathname = '/')} />
         <FloatingLayer>
           <FloatingPlayer />
+          <FloatingNetease />
           <FloatingSteam />
         </FloatingLayer>
       </div>
@@ -136,6 +138,7 @@ function Shell() {
       {layout}
       <FloatingLayer>
         <FloatingPlayer />
+        <FloatingNetease />
         <FloatingSteam />
       </FloatingLayer>
       <GridSpotlight />
