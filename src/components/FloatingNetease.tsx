@@ -82,7 +82,7 @@ export default function FloatingNetease() {
           }}
         >
           {topSong?.song.cover ? (
-            <img src={topSong.song.cover} alt="" className="size-full object-cover" />
+            <img src={topSong.song.cover} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
           ) : (
             <span className="grid size-full place-items-center text-accent">
               <Music className="size-6" />
@@ -168,6 +168,7 @@ export default function FloatingNetease() {
                           <img
                             src={item.song.cover}
                             alt=""
+                            referrerPolicy="no-referrer"
                             loading="lazy"
                             onError={hideBrokenImage}
                             className="h-7 w-7 shrink-0 rounded-sm object-cover"

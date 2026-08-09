@@ -151,6 +151,7 @@ const songUrlCache = createCache(15_000)       // 播放 URL 短期缓存
 const playlistCache = createCache(300_000)     // 歌单内容变更少
 const recordCache = createCache(60_000)        // 听歌记录 60s
 const lyricCache = createCache(600_000)        // 歌词很少变
+const imageCache = createCache(3_600_000)      // 图片代理缓存 1h
 
 // ── normalisers ───────────────────────────────────────────
 
@@ -161,12 +162,25 @@ function artistName(ar) {
 
 function normaliseSong(raw) {
   const id = raw.id ?? 0
+  let cover = raw.al?.picUrl ?? raw.album?.picUrl ?? raw.cover ?? ''
+  if (cover) {
+    // Upgrade http → https so browsers never block mixed content
+    if (cover.startsWith('http://')) cover = cover.replace('http://', 'https://')
+    // Append thumbnail param — cards only show covers at 28–64 px so
+    // 128 px covers 2× retina without wasting bandwidth.
+    if (cover.includes('music.126.net') && !cover.includes('?param=')) {
+      cover = cover + '?param=128y128'
+    }
+    // Route through the server-side image proxy so the NetEase CDN
+    // never sees a browser Referer / Origin header.
+    cover = `/api/netease/cover?u=${encodeURIComponent(cover)}`
+  }
   return {
     id,
     name: raw.name ?? 'Unknown',
     artist: artistName(raw.ar ?? raw.artists),
     album: raw.al?.name ?? raw.album?.name ?? '',
-    cover: raw.al?.picUrl ?? raw.album?.picUrl ?? raw.cover ?? '',
+    cover,
     duration: raw.dt ?? raw.duration ?? 0,
     url: raw.url ?? null,
   }
@@ -193,17 +207,39 @@ export async function searchSong(kw, limit = 20) {
 /**
  * Get a playable song URL.
  *
+ * Tries multiple quality levels because `song_url_v1` accepts `level`
+ * (not raw bitrate). Falls back from highest → standard.
+ *
  * @param {number} id  song id
- * @param {number} [br=320000]  bitrate (128000, 192000, 320000, 999000)
+ * @param {number} [br=320000]  desired bitrate (128000, 320000, 999000)
  * @returns {Promise<string|null>}
  */
 export async function getSongUrl(id, br = 320000) {
-  const { value } = await songUrlCache.get(`url:${id}:${br}`, async () => {
-    const data = await request(song_url, { id, br })
-    const url = data?.data?.[0]?.url ?? null
-    return url
+  // Map bitrate → level for the eapi endpoint
+  const primary = brToLevel(br)
+  const fallbacks = ['standard']
+  if (primary !== 'standard') fallbacks.unshift(primary)
+
+  const cacheKey = `url:${id}`
+
+  const { value } = await songUrlCache.get(cacheKey, async () => {
+    for (const level of fallbacks) {
+      const data = await request(song_url, { id, level })
+      const url = data?.data?.[0]?.url ?? null
+      if (url) return url
+    }
+    return null
   })
   return value
+}
+
+/** @param {number} br  bitrate in bps (128000, 320000, 999000, 1999000) */
+function brToLevel(br) {
+  if (br >= 1999000) return 'hires'      // Hi-Res (1999 kbps)
+  if (br >= 999000) return 'lossless'    // 无损 (999 kbps)
+  if (br >= 320000) return 'exhigh'      // 极高 (320 kbps)
+  if (br >= 192000) return 'higher'      // 较高 (192 kbps)
+  return 'standard'                       // 标准 (128 kbps)
 }
 
 /**
@@ -258,4 +294,39 @@ export async function getLyric(id) {
     return data?.lrc?.lyric ?? null
   })
   return value
+}
+
+// ── image proxy ────────────────────────────────────────────
+
+/**
+ * Fetch a NetEase CDN image server-side and return it as a Response-like
+ * object with `body` (Buffer), `contentType`, and `status`.
+ *
+ * Browsers calling `music.126.net` directly get blocked by Referer / Origin
+ * checks.  Proxying through the server avoids every browser-side header that
+ * the CDN inspects.
+ *
+ * @param {string} url  original cover URL
+ * @returns {Promise<{body: Buffer, contentType: string, status: number}>}
+ */
+export async function proxyCover(url) {
+  const { value } = await imageCache.get(url, async () => {
+    const res = await fetch(url, {
+      headers: {
+        // Mimic a direct browser request so the CDN doesn't flag us
+        'Accept': 'image/avif,image/webp,image/*,*/*',
+        'User-Agent': 'Mozilla/5.0 (compatible; NeteaseProxy/1.0)',
+      },
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) {
+      const err = new Error(`Cover image fetch failed: ${res.status}`)
+      err.status = 502
+      throw err
+    }
+    const body = Buffer.from(await res.arrayBuffer())
+    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    return { body, contentType }
+  })
+  return { ...value, status: 200 }
 }

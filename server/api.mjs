@@ -5,6 +5,7 @@ import {
   getPlaylistDetail,
   getUserRecord,
   getLyric,
+  proxyCover,
   isNeteaseConfigured,
   NeteaseError,
 } from './netease.mjs'
@@ -145,6 +146,30 @@ export function neteaseApi(options = {}) {
         }
         const lrc = await getLyric(Number(id))
         return send(res, 200, { ok: true, lyric: lrc }, 300)
+      }
+
+      if (route === '/cover') {
+        const imageUrl = url.searchParams.get('u')
+        if (!imageUrl) {
+          return send(res, 400, { ok: false, code: 'bad_request', error: 'Query parameter "u" is required' })
+        }
+        // Only proxy NetEase CDN URLs
+        if (!imageUrl.includes('music.126.net')) {
+          return send(res, 403, { ok: false, code: 'forbidden', error: 'Only NetEase CDN URLs are allowed' })
+        }
+        try {
+          const { body, contentType, status } = await proxyCover(imageUrl)
+          res.statusCode = status
+          res.setHeader('content-type', contentType)
+          res.setHeader('cache-control', 'public, max-age=3600')
+          res.setHeader('content-length', body.length)
+          return res.end(body)
+        } catch (err) {
+          if (err.status) {
+            return send(res, err.status, { ok: false, code: 'proxy_error', error: err.message })
+          }
+          throw err
+        }
       }
 
       return send(res, 404, { ok: false, code: 'unknown_route', error: 'Unknown route' })

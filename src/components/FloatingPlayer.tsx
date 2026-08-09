@@ -49,6 +49,10 @@ export default function FloatingPlayer() {
   const [searchResults, setSearchResults] = useState<NeteaseSong[]>([])
   const [searching, setSearching] = useState(false)
 
+  // Track focus + IME composition so the card stays open while typing CJK
+  const inputFocusedRef = useRef(false)
+  const composingRef = useRef(false)
+
   // playlist state
   const [playlists, setPlaylists] = useState<NeteasePlaylist[]>([])
   const [activePlaylistIdx, setActivePlaylistIdx] = useState(0)
@@ -102,7 +106,11 @@ export default function FloatingPlayer() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => doSearch(searchKw), DEBOUNCE_MS)
+    debounceRef.current = setTimeout(() => {
+      // Don't search while IME composition is in progress (pinyin etc.)
+      if (composingRef.current) return
+      doSearch(searchKw)
+    }, DEBOUNCE_MS)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
@@ -110,21 +118,31 @@ export default function FloatingPlayer() {
 
   const playSong = useCallback(
     async (song: NeteaseSong) => {
+      // Prime the audio context while we still have the user gesture,
+      // otherwise autoplay policy may block play() after the async fetch.
+      try { new Audio().play()?.catch(() => {}) } catch {}
+
       try {
-        let url = await fetchNeteaseSongUrl(song.id, 320000)
-        if (!url) {
-          url = await fetchNeteaseSongUrl(song.id, 128000)
-        }
-        if (url) {
-          setTrack({
-            title: song.name,
-            artist: song.artist,
-            cover: song.cover,
-            url,
-          })
-        }
+        // Try from highest to lowest quality (official API priority order)
+        let url = await fetchNeteaseSongUrl(song.id, 999000)   // 无损
+        if (!url) url = await fetchNeteaseSongUrl(song.id, 320000)  // 极高
+        if (!url) url = await fetchNeteaseSongUrl(song.id, 128000)  // 标准
+        // Fallback to the public preview URL (no auth required)
+        if (!url) url = `https://music.163.com/song/media/outer/url?id=${song.id}`
+        setTrack({
+          title: song.name,
+          artist: song.artist,
+          cover: song.cover,
+          url,
+        })
       } catch {
-        // ignore — song won't play
+        // Last resort: try the public URL directly
+        setTrack({
+          title: song.name,
+          artist: song.artist,
+          cover: song.cover,
+          url: `https://music.163.com/song/media/outer/url?id=${song.id}`,
+        })
       }
     },
     [setTrack],
@@ -145,7 +163,10 @@ export default function FloatingPlayer() {
   return (
     <div
       onMouseEnter={() => setCollapsed(false)}
-      onMouseLeave={() => setCollapsed(true)}
+      onMouseLeave={() => {
+        // Don't collapse while the search input is focused (e.g. typing CJK)
+        if (!inputFocusedRef.current) setCollapsed(true)
+      }}
       className={`relative z-50 origin-bottom-right scale-[1.2] overflow-hidden rounded-2xl border bg-ink/80 shadow-xl backdrop-blur-md ${
         collapsed ? 'w-16 border-transparent' : 'w-[316px] border-ink-2/20'
       }`}
@@ -181,7 +202,7 @@ export default function FloatingPlayer() {
             }}
           >
             {meta.cover ? (
-              <img src={meta.cover} alt="" className="size-full object-cover" />
+              <img src={meta.cover} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
             ) : (
               <span className="grid size-full place-items-center text-accent">
                 <Music className="size-6" />
@@ -292,6 +313,16 @@ export default function FloatingPlayer() {
                 type="text"
                 value={searchKw}
                 onChange={(e) => setSearchKw(e.target.value)}
+                onCompositionStart={() => { composingRef.current = true }}
+                onCompositionEnd={(e) => {
+                  composingRef.current = false
+                  setSearchKw((e.target as HTMLInputElement).value)
+                }}
+                onFocus={() => {
+                  inputFocusedRef.current = true
+                  setCollapsed(false)
+                }}
+                onBlur={() => { inputFocusedRef.current = false }}
                 placeholder={t('netease.search')}
                 className="flex-1 bg-transparent font-mono text-[11px] text-paper placeholder:text-dim/60 outline-none"
               />
@@ -340,6 +371,7 @@ export default function FloatingPlayer() {
                         <img
                           src={song.cover}
                           alt=""
+                          referrerPolicy="no-referrer"
                           loading="lazy"
                           className="size-8 shrink-0 rounded object-cover"
                           onError={(e) => {
