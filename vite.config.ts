@@ -38,5 +38,12 @@ export default defineConfig({
   base: process.env.PAGES_BASE_URL || '/',
   // .ttc (TrueType Collection) isn't in Vite's default asset list; treat it as a static asset.
   assetsInclude: ['**/*.ttc'],
+  // The .vs/ folder (Visual Studio workspace data) is locked by VS and cannot be
+  // watched; exclude it to avoid EBUSY errors from the file watcher.
+  server: {
+    watch: {
+      ignored: ['**/.vs/**'],
+    },
+  },
   plugins: [react(), tailwindcss(), steamApiPlugin(), neteaseApiPlugin()],
 })
