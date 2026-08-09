@@ -48,7 +48,7 @@ const greet = (name: string) => `你好，${name}`
 greet('世界')
 ```
 
-现在由真正的 Markdown 库渲染。行内支持：**粗体**、*斜体*、`代码`、[链接](https://example.com)。
+现在由 Markdown 库渲染。行内支持：**粗体**、*斜体*、`代码`、[链接](https://example.com)。
 也支持块级元素：
 
 - 第一项
