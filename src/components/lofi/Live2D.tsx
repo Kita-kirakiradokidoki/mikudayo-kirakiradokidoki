@@ -2,24 +2,36 @@ import { useEffect } from 'react'
 import { withBase } from '../../lib/base'
 import { SITE_CONFIG } from '../../site.config'
 
+type WidgetApi = {
+  init: (o?: unknown) => void
+  destroy?: () => void
+}
+
+/**
+ * Resolve the widget API from the live2d-widget module.
+ * The installed package (xiazeyu/live2d-widget.js@3.1.4, a 2019 webpack build)
+ * exports the API as a *named* `L2Dwidget` object (and nests it under
+ * `default.L2Dwidget` too) — there is no `default.init`. We accept both shapes
+ * so we survive the CommonJS interop either way.
+ */
+function resolveWidget(mod: unknown): WidgetApi | null {
+  const anyMod = mod as Record<string, unknown> & { default?: Record<string, unknown> }
+  const api = (anyMod.L2Dwidget ?? anyMod.default?.L2Dwidget ?? null) as
+    | WidgetApi
+    | null
+    | undefined
+  if (api && typeof api.init === 'function') return api
+  return null
+}
+
 export default function Live2D() {
   useEffect(() => {
     let cancelled = false
-    let L2Dwidget: { init: (o?: unknown) => void; destroy?: () => void } | null = null
+    let widget: WidgetApi | null = null
 
+    // the installed live2d-widget builds its container as <div id="live2d-widget">
     const removeOldWidget = () => {
-      document.getElementById('live2d')?.remove()
-    }
-
-    const cleanup = () => {
-      if (L2Dwidget && typeof L2Dwidget.destroy === 'function') {
-        try {
-          L2Dwidget.destroy()
-        } catch {
-          // ignore
-        }
-      }
-      removeOldWidget()
+      document.getElementById('live2d-widget')?.remove()
     }
 
     // clear any previous instance before (re)mount (React StrictMode double-invoke safe)
@@ -28,9 +40,13 @@ export default function Live2D() {
     import('live2d-widget')
       .then((mod) => {
         if (cancelled) return
-        const w = mod.default as { init: (o?: unknown) => void; destroy?: () => void }
-        L2Dwidget = w
-        w.init({
+        const api = resolveWidget(mod)
+        if (!api) {
+          // wrong export shape or broken build — leave the page usable
+          return
+        }
+        widget = api
+        api.init({
           model: {
             jsonPath: withBase('/lofi/live2d/shizuku.model.json'),
             scale: 1,
@@ -53,12 +69,19 @@ export default function Live2D() {
         })
       })
       .catch(() => {
-        // widget failed to load (offline / network); leave the page usable
+        // widget failed to load (offline / network / build issue); leave the page usable
       })
 
     return () => {
       cancelled = true
-      cleanup()
+      if (widget && typeof widget.destroy === 'function') {
+        try {
+          widget.destroy()
+        } catch {
+          // ignore
+        }
+      }
+      removeOldWidget()
     }
   }, [])
 
