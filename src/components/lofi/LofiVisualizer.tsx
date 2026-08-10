@@ -83,8 +83,12 @@ export default function LofiVisualizer() {
     raf = requestAnimationFrame(frame)
 
     const onVisibility = () => {
-      if (document.hidden) cancelAnimationFrame(raf)
-      else if (!raf) raf = requestAnimationFrame(frame)
+      if (document.hidden) {
+        cancelAnimationFrame(raf)
+        raf = 0
+      } else if (!raf) {
+        raf = requestAnimationFrame(frame)
+      }
     }
     document.addEventListener('visibilitychange', onVisibility)
 
