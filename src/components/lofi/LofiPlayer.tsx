@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useLofiAudio } from './LofiAudioContext'
 import { SITE_CONFIG } from '../../site.config'
@@ -8,12 +8,13 @@ import { useLang } from '../../i18n'
 export default function LofiPlayer() {
   const { pick } = useLang()
   const tracks = SITE_CONFIG.lofi.audio.tracks
-  const { audioRef, wantPlayRef, requestPlay } = useLofiAudio()
+  const { audioRef, wantPlayRef, requestPlay, bump } = useLofiAudio()
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.6)
   const [muted, setMuted] = useState(false)
   const [needsGesture, setNeedsGesture] = useState(false)
+  const hasMountedRef = useRef(false)
 
   const current = tracks.length > 0 ? tracks[index % tracks.length] : null
 
@@ -25,12 +26,24 @@ export default function LofiPlayer() {
     el.preload = 'metadata'
     el.volume = muted ? 0 : volume
     el.muted = muted
-    el.addEventListener('play', () => setPlaying(true))
+    el.addEventListener('play', () => {
+      setPlaying(true)
+      setNeedsGesture(false)
+    })
     el.addEventListener('pause', () => setPlaying(false))
     el.addEventListener('ended', () => setIndex((i) => (i + 1) % tracks.length))
     audioRef.current = el
-    wantPlayRef.current = true
-    if (SITE_CONFIG.lofi.audio.autoplay && wantPlayRef.current) {
+    bump()
+    if (!hasMountedRef.current) {
+      // first mount: attempt autoplay exactly once (subject to browser gesture policy)
+      hasMountedRef.current = true
+      wantPlayRef.current = true
+      if (SITE_CONFIG.lofi.audio.autoplay) {
+        const p = el.play()
+        if (p && typeof p.catch === 'function') p.catch(() => setNeedsGesture(true))
+      }
+    } else if (wantPlayRef.current) {
+      // track change while the user was playing: auto-continue (paused → stays paused)
       const p = el.play()
       if (p && typeof p.catch === 'function') p.catch(() => setNeedsGesture(true))
     }

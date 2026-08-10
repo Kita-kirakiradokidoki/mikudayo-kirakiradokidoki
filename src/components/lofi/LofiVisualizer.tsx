@@ -4,11 +4,17 @@ import { useLofiAudio } from './LofiAudioContext'
 
 export default function LofiVisualizer() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const { audioRef } = useLofiAudio()
+  const { audioRef, resumeRef, audioVersion } = useLofiAudio()
   const cfg = SITE_CONFIG.lofi.visualizer
   const barCount = cfg.bars
 
   useEffect(() => {
+    // On the first commit LofiPlayer hasn't created the element yet (audioVersion
+    // starts at 0); LofiPlayer bumps it after assigning audioRef.current, so skip
+    // the initial run to avoid attaching createMediaElementSource twice to the
+    // same element (which throws InvalidStateError).
+    if (audioVersion === 0) return
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -51,6 +57,11 @@ export default function LofiVisualizer() {
         silentSource.connect(analyser)
         if (audioCtx.state === 'suspended') void audioCtx.resume().catch(() => {})
         silentSource.start()
+        // expose a gesture-time resume so the click-degrade button / play toggle
+        // can un-suspend the context on a fresh deep-link where autoplay is blocked
+        resumeRef.current = () => {
+          if (audioCtx?.state === 'suspended') void audioCtx.resume().catch(() => {})
+        }
       } catch {
         // AudioContext unavailable / already attached — skip visualization
       }
@@ -96,6 +107,7 @@ export default function LofiVisualizer() {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', resize)
       document.removeEventListener('visibilitychange', onVisibility)
+      resumeRef.current = null
       try {
         silentSource?.stop()
         silentSource?.disconnect()
@@ -105,7 +117,7 @@ export default function LofiVisualizer() {
         // ignore
       }
     }
-  }, [audioRef, barCount])
+  }, [audioRef, barCount, audioVersion, resumeRef])
 
   return (
     <canvas
