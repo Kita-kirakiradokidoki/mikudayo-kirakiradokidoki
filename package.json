@@ -17,6 +17,7 @@
     "@gsap/react": "^2.1.2",
     "express": "^4.21.0",
     "gsap": "^3.13.0",
+    "live2d-widget": "^3.1.4",
     "lucide-react": "^0.525.0",
     "NeteaseCloudMusicApi": "^4.32.0",
     "react": "^19.1.0",
