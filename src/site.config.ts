@@ -34,7 +34,21 @@ export type LofiConfig = {
   /** master switch for the /lofi immersive page */
   enabled: boolean
   audio: {
+    /** auto-start playback on entering the /lofi page (subject to browser gesture policy) */
+    autoplay: boolean
     tracks: LofiTrack[]
+  }
+  wallpapers: {
+    /** muted looping video wallpapers, rotated with cross-fade */
+    videos: string[]
+    /** seconds between video swaps (single video → never rotates) */
+    swapSeconds: number
+  }
+  visualizer: {
+    /** master switch for the bar-spectrum visualizer */
+    enabled: boolean
+    /** number of frequency bars */
+    bars: number
   }
   live2d: {
     /** speech bubble lines, picked at random (used by Live2D.tsx dialog tips) */
@@ -322,6 +336,7 @@ export const SITE_CONFIG: SiteConfig = {
   lofi: {
     enabled: true,
     audio: {
+      autoplay: true,
       tracks: [
         { url: '/lofi/audio/track-01.mp3', title: 'Midnight Rain', artist: 'CC0 Lo-fi Vol.1' },
         { url: '/lofi/audio/track-02.mp3', title: 'Study in C', artist: 'CC0 Lo-fi Vol.1' },
@@ -329,6 +344,18 @@ export const SITE_CONFIG: SiteConfig = {
         { url: '/lofi/audio/track-04.mp3', title: 'Quiet Window', artist: 'CC0 Lo-fi Vol.1' },
         { url: '/lofi/audio/track-05.mp3', title: 'Last Page', artist: 'CC0 Lo-fi Vol.1' },
       ],
+    },
+    wallpapers: {
+      videos: [
+        '/lofi/wallpapers/rain.mp4',
+        '/lofi/wallpapers/night.mp4',
+        '/lofi/wallpapers/fireplace.mp4',
+      ],
+      swapSeconds: 50,
+    },
+    visualizer: {
+      enabled: true,
+      bars: 28,
     },
     live2d: {
       tips: [
