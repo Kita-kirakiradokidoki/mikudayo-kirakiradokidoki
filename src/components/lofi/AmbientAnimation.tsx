@@ -109,21 +109,27 @@ export default function AmbientAnimation({ mode }: { mode: AmbientMode }) {
 
     for (let i = 0; i < cap; i++) items.push(spawn())
 
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf)
+        raf = 0
+      } else if (!raf) {
+        raf = requestAnimationFrame(frame)
+      }
+    }
+
     if (reduced) {
       // render a single static frame, no animation loop
       frame()
       cancelAnimationFrame(raf)
     } else {
-      const onVisibility = () => {
-        if (document.hidden) cancelAnimationFrame(raf)
-        else if (!raf) raf = requestAnimationFrame(frame)
-      }
       document.addEventListener('visibilitychange', onVisibility)
       raf = requestAnimationFrame(frame)
     }
 
     return () => {
       cancelAnimationFrame(raf)
+      document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('resize', resize)
     }
   }, [mode])
