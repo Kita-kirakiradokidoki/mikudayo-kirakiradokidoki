@@ -20,6 +20,7 @@ import FloatingNetease from './components/FloatingNetease'
 import FloatingLayer from './components/FloatingLayer'
 import TestPage from './components/TestPage'
 import LofiPage from './components/LofiPage'
+import LofiEntry from './components/LofiEntry'
 import { AudioProvider, useBgm } from './components/AudioProvider'
 import { SITE_CONFIG } from './site.config'
 
@@ -155,6 +156,7 @@ function Shell() {
         <FloatingPlayer />
         <FloatingNetease />
         <FloatingSteam />
+        <LofiEntry />
       </FloatingLayer>
       <GridSpotlight />
       <ScrollProgress />

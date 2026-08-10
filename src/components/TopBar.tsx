@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Disc3, Moon, Sun, Monitor, Palette } from 'lucide-react'
+import { Moon, Sun, Monitor, Palette } from 'lucide-react'
 import { useLang, type Lang } from '../i18n'
 import { useTheme } from '../theme'
 import { SITE_CONFIG, type PaletteId } from '../site.config'
-import { withBase } from '../lib/base'
 
 function GithubMark({ className }: { className?: string }) {
   return (
@@ -187,7 +186,7 @@ function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => v
 }
 
 export default function TopBar() {
-  const { lang, setLang, pick } = useLang()
+  const { lang, setLang } = useLang()
   const { theme, setTheme, palette, setPalette, availablePalettes } = useTheme()
   const { nav, brand, githubUrl } = SITE_CONFIG
 
@@ -212,16 +211,6 @@ export default function TopBar() {
                 available={availablePalettes}
               />
             </>
-          )}
-          {nav.showLofi && SITE_CONFIG.lofi.enabled && (
-            <a
-              href={withBase('/lofi')}
-              aria-label={pick({ zh: '自习室', en: 'Lo-fi' })}
-              title={pick({ zh: '自习室', en: 'Lo-fi' })}
-              className="text-dim hover:text-paper grid size-8 place-items-center rounded-md border border-transparent transition-colors hover:border-ink-2/20 hover:bg-ink-2/10 press-sm"
-            >
-              <Disc3 className="size-4" />
-            </a>
           )}
           {nav.showGithub && (
             <a
