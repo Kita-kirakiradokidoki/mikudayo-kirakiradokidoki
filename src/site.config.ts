@@ -84,6 +84,10 @@ export type SiteConfig = {
   background: {
     type: 'none' | 'image'
     url: string
+    /** optional rotation list — when non-empty the background cross-fades through these instead of `url` */
+    images?: string[]
+    /** seconds between background swaps (only when `images` is non-empty) */
+    swapSeconds?: number
     overlay: number
     blur: number
     fit: 'cover' | 'contain' | 'repeat'
@@ -286,6 +290,12 @@ export const SITE_CONFIG: SiteConfig = {
   background: {
     type: 'image',
     url: '/bg.jpg',
+    images: [
+      '/miku-wallpapers/miku-sunrise.jpg',
+      '/miku-wallpapers/miku-eyepatch.jpg',
+      '/miku-wallpapers/miku-sunrise2.jpg',
+    ],
+    swapSeconds: 12,
     overlay: 0.5,
     blur: 0,
     fit: 'cover',
