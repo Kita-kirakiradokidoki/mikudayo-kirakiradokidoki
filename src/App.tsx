@@ -19,6 +19,7 @@ import FloatingSteam from './components/FloatingSteam'
 import FloatingNetease from './components/FloatingNetease'
 import FloatingLayer from './components/FloatingLayer'
 import TestPage from './components/TestPage'
+import LofiPage from './components/LofiPage'
 import { AudioProvider, useBgm } from './components/AudioProvider'
 import { SITE_CONFIG } from './site.config'
 
@@ -27,12 +28,18 @@ function isTestRoute(): boolean {
   return window.location.pathname.replace(/\/+$/, '') === '/test'
 }
 
+function isLofiRoute(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.location.pathname.replace(/\/+$/, '') === '/lofi'
+}
+
 function Shell() {
   const { lang } = useLang()
   const { setActive, setTrack } = useBgm()
   const [selectedPost, setSelectedPost] = useState<string | null>(null)
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [testRoute] = useState<boolean>(isTestRoute)
+  const [lofiRoute] = useState<boolean>(isLofiRoute)
 
   const allTags = useMemo(
     () => [...new Set(POSTS.flatMap((p) => p.tags))].sort(),
@@ -50,8 +57,12 @@ function Shell() {
   }, [lang])
 
   useEffect(() => {
+    // The lofi page silences the main-site BGM itself (LofiPage calls
+    // setActive(false) on mount). Child effects run before parent effects,
+    // so without this guard Shell would re-enable the BGM right after.
+    if (lofiRoute) return
     setActive(selectedPost === null)
-  }, [selectedPost, setActive])
+  }, [selectedPost, setActive, lofiRoute])
 
   // clear any article track override when the page changes
   useEffect(() => {
@@ -73,6 +84,10 @@ function Shell() {
       window.location.hash = ''
     }
   }, [selectedPost])
+
+  if (lofiRoute) {
+    return <LofiPage />
+  }
 
   if (testRoute) {
     return (
