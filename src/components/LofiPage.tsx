@@ -29,7 +29,7 @@ export default function LofiPage() {
   if (!lofi.enabled) return null
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[#1e1b2e] text-[#f5f5f0]">
+    <div className="relative isolate min-h-[100dvh] overflow-hidden bg-[#1e1b2e] text-[#f5f5f0]">
       <AmbientAnimation mode={mode} />
 
       {/* warm vignette over the animation */}
