@@ -23,7 +23,6 @@ export default function AmbientAnimation({ mode }: { mode: AmbientMode }) {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    if (!ctx) return
 
     let raf = 0
     let w = 0
@@ -39,7 +38,10 @@ export default function AmbientAnimation({ mode }: { mode: AmbientMode }) {
       canvas.width = Math.floor(w * dpr)
       canvas.height = Math.floor(h * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      if (reduced) frame()
+      if (reduced) {
+        frame()
+        cancelAnimationFrame(raf)
+      }
     }
     window.addEventListener('resize', resize)
 
