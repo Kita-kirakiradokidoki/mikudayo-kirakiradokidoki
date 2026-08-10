@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import { useLofiAudio } from './LofiAudioContext'
 import { SITE_CONFIG } from '../../site.config'
 import { withBase } from '../../lib/base'
 import { useLang } from '../../i18n'
@@ -7,8 +8,7 @@ import { useLang } from '../../i18n'
 export default function LofiPlayer() {
   const { pick } = useLang()
   const tracks = SITE_CONFIG.lofi.audio.tracks
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const wantPlayRef = useRef(false)
+  const { audioRef, wantPlayRef, requestPlay } = useLofiAudio()
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.6)
@@ -54,9 +54,7 @@ export default function LofiPlayer() {
     const el = audioRef.current
     if (!el) return
     if (el.paused) {
-      wantPlayRef.current = true
-      const p = el.play()
-      if (p && typeof p.catch === 'function') p.catch(() => setPlaying(false))
+      requestPlay()
     } else {
       wantPlayRef.current = false
       el.pause()
