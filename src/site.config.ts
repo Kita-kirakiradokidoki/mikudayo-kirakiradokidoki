@@ -24,6 +24,34 @@ export type Palette = {
 
 export type PaletteId = 'classic' | 'aurora' | 'ember' | 'sakura'
 
+export type LofiTrack = {
+  url: string
+  title: string
+  artist: string
+}
+
+export type LofiConfig = {
+  /** master switch for the /lofi immersive page */
+  enabled: boolean
+  audio: {
+    tracks: LofiTrack[]
+  }
+  live2d: {
+    /** speech bubble lines, picked at random (used by Live2D.tsx dialog tips) */
+    tips: string[]
+  }
+  ambient: {
+    /** default effect on first visit: 'rain' | 'snow' | 'particles' */
+    default: 'rain' | 'snow' | 'particles'
+  }
+  pomodoro: {
+    /** hide the pomodoro widget on the lofi page by default */
+    hidden: boolean
+    /** work duration in minutes */
+    workMinutes: number
+  }
+}
+
 export type SiteConfig = {
   brand: {
     name: string
@@ -37,6 +65,7 @@ export type SiteConfig = {
     showLang: boolean
     showTheme: boolean
     showGithub: boolean
+    showLofi: boolean
   }
   background: {
     type: 'none' | 'image'
@@ -84,6 +113,7 @@ export type SiteConfig = {
   grid: {
     enabled: boolean
   }
+  lofi: LofiConfig
   hero: {
     showParallax: boolean
     showStats: boolean
@@ -236,6 +266,7 @@ export const SITE_CONFIG: SiteConfig = {
     showLang: true,
     showTheme: true,
     showGithub: true,
+    showLofi: true,
   },
 
   background: {
@@ -286,6 +317,37 @@ export const SITE_CONFIG: SiteConfig = {
     showStats: true,
     showBadge: true,
     showUpdated: true,
+  },
+
+  lofi: {
+    enabled: true,
+    audio: {
+      tracks: [
+        { url: '/lofi/audio/track-01.mp3', title: 'Midnight Rain', artist: 'CC0 Lo-fi Vol.1' },
+        { url: '/lofi/audio/track-02.mp3', title: 'Study in C', artist: 'CC0 Lo-fi Vol.1' },
+        { url: '/lofi/audio/track-03.mp3', title: 'Paper Planes', artist: 'CC0 Lo-fi Vol.1' },
+        { url: '/lofi/audio/track-04.mp3', title: 'Quiet Window', artist: 'CC0 Lo-fi Vol.1' },
+        { url: '/lofi/audio/track-05.mp3', title: 'Last Page', artist: 'CC0 Lo-fi Vol.1' },
+      ],
+    },
+    live2d: {
+      tips: [
+        '今天也要加油哦。',
+        '戴上耳机，沉下来。',
+        '休息一下，喝口水吧。',
+        '慢慢来，比较快。',
+        '窗外在下雨，很适合读书。',
+        '专注的每一分钟都算数。',
+        '想聊天的话，点我一下。',
+      ],
+    },
+    ambient: {
+      default: 'rain',
+    },
+    pomodoro: {
+      hidden: true,
+      workMinutes: 25,
+    },
   },
 
   strings: {
@@ -344,6 +406,22 @@ export const SITE_CONFIG: SiteConfig = {
       'netease.noLyrics': '暂无歌词',
       'footer.tagline': '咕咕嘎嘎？',
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
+      'lofi.title': '深夜自习室',
+      'lofi.subtitle': '戴上耳机 沉下来',
+      'lofi.back': '返回博客',
+      'lofi.ambient.rain': '雨',
+      'lofi.ambient.snow': '雪',
+      'lofi.ambient.particles': '星',
+      'lofi.play': '播放',
+      'lofi.pause': '暂停',
+      'lofi.next': '下一首',
+      'lofi.prev': '上一首',
+      'lofi.mute': '静音',
+      'lofi.unmute': '取消静音',
+      'lofi.pomodoro': '番茄钟',
+      'lofi.pomodoro.start': '开始',
+      'lofi.pomodoro.pause': '暂停',
+      'lofi.pomodoro.reset': '重置',
     },
     en: {
       'doc.title': 'Miku da yo-',
@@ -400,6 +478,22 @@ export const SITE_CONFIG: SiteConfig = {
       'netease.noLyrics': 'No lyrics available',
       'footer.tagline': 'I am a PlaceHolder',
       'footer.built': 'Built with React · GSAP · Tailwind · Bun.',
+      'lofi.title': 'Lo-fi Study Room',
+      'lofi.subtitle': 'Put on headphones, sink in',
+      'lofi.back': 'Back to blog',
+      'lofi.ambient.rain': 'Rain',
+      'lofi.ambient.snow': 'Snow',
+      'lofi.ambient.particles': 'Stars',
+      'lofi.play': 'Play',
+      'lofi.pause': 'Pause',
+      'lofi.next': 'Next',
+      'lofi.prev': 'Previous',
+      'lofi.mute': 'Mute',
+      'lofi.unmute': 'Unmute',
+      'lofi.pomodoro': 'Pomodoro',
+      'lofi.pomodoro.start': 'Start',
+      'lofi.pomodoro.pause': 'Pause',
+      'lofi.pomodoro.reset': 'Reset',
     },
   },
 }
