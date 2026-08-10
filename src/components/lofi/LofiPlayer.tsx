@@ -8,6 +8,7 @@ export default function LofiPlayer() {
   const { pick } = useLang()
   const tracks = SITE_CONFIG.lofi.audio.tracks
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const wantPlayRef = useRef(false)
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.6)
@@ -27,6 +28,10 @@ export default function LofiPlayer() {
     el.addEventListener('pause', () => setPlaying(false))
     el.addEventListener('ended', () => setIndex((i) => (i + 1) % tracks.length))
     audioRef.current = el
+    if (wantPlayRef.current) {
+      const p = el.play()
+      if (p && typeof p.catch === 'function') p.catch(() => {})
+    }
     return () => {
       el.pause()
       el.removeAttribute('src')
@@ -49,9 +54,11 @@ export default function LofiPlayer() {
     const el = audioRef.current
     if (!el) return
     if (el.paused) {
+      wantPlayRef.current = true
       const p = el.play()
       if (p && typeof p.catch === 'function') p.catch(() => setPlaying(false))
     } else {
+      wantPlayRef.current = false
       el.pause()
     }
   }

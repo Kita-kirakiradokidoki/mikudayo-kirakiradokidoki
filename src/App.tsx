@@ -85,7 +85,7 @@ function Shell() {
     }
   }, [selectedPost])
 
-  if (lofiRoute) {
+  if (lofiRoute && SITE_CONFIG.lofi.enabled) {
     return <LofiPage />
   }
 

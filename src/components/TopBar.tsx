@@ -213,7 +213,7 @@ export default function TopBar() {
               />
             </>
           )}
-          {nav.showLofi && (
+          {nav.showLofi && SITE_CONFIG.lofi.enabled && (
             <a
               href={withBase('/lofi')}
               aria-label={pick({ zh: '自习室', en: 'Lo-fi' })}

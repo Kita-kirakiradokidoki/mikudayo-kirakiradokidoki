@@ -22,7 +22,7 @@ export default function AmbientAnimation({ mode }: { mode: AmbientMode }) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d')!
     if (!ctx) return
 
     let raf = 0
@@ -39,8 +39,8 @@ export default function AmbientAnimation({ mode }: { mode: AmbientMode }) {
       canvas.width = Math.floor(w * dpr)
       canvas.height = Math.floor(h * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      if (reduced) frame()
     }
-    resize()
     window.addEventListener('resize', resize)
 
     const spawn = (): Particle => {
@@ -71,7 +71,7 @@ export default function AmbientAnimation({ mode }: { mode: AmbientMode }) {
       }
     }
 
-    const frame = () => {
+    function frame() {
       ctx.clearRect(0, 0, w, h)
       for (let i = 0; i < items.length; i++) {
         const p = items[i]
@@ -107,6 +107,7 @@ export default function AmbientAnimation({ mode }: { mode: AmbientMode }) {
       raf = requestAnimationFrame(frame)
     }
 
+    resize()
     for (let i = 0; i < cap; i++) items.push(spawn())
 
     const onVisibility = () => {
