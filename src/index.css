@@ -274,6 +274,17 @@ input[type='range']::-moz-range-thumb {
   animation: spin-slow 2.5s linear infinite;
 }
 
+/* lofi playlist "now playing" equalizer bars: staggered via inline animation-delay */
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+.eq-bar {
+  animation: eq 1s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
 /* Slow "Ken Burns" drift for the rotating home background: scale up slightly
    while panning, so a static image reads as a subtle dynamic wallpaper. */
 @keyframes ken-burns {

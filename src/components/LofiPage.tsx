@@ -8,6 +8,7 @@ import AmbientAnimation, { type AmbientMode } from './lofi/AmbientAnimation'
 import Live2D from './lofi/Live2D'
 import { LofiAudioProvider } from './lofi/LofiAudioContext'
 import LofiPlayer from './lofi/LofiPlayer'
+import LofiPlaylist from './lofi/LofiPlaylist'
 import LofiVisualizer from './lofi/LofiVisualizer'
 import Pomodoro from './lofi/Pomodoro'
 import VideoWallpaper from './lofi/VideoWallpaper'
@@ -92,6 +93,7 @@ export default function LofiPage() {
         </main>
 
         <LofiVisualizer />
+        <LofiPlaylist />
 
         {/* subtle corner credit */}
         <p className="pointer-events-none fixed bottom-2 right-3 z-20 text-[10px] uppercase tracking-widest text-white/20">
