@@ -4,13 +4,13 @@ import { useLofiAudio } from './LofiAudioContext'
 
 export default function LofiVisualizer() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const { audioRef, resumeRef, audioVersion } = useLofiAudio()
+  const { mediaRef, resumeRef, audioVersion } = useLofiAudio()
   const cfg = SITE_CONFIG.lofi.visualizer
   const barCount = cfg.bars
 
   useEffect(() => {
-    // On the first commit LofiPlayer hasn't created the element yet (audioVersion
-    // starts at 0); LofiPlayer bumps it after assigning audioRef.current, so skip
+    // On the first commit VideoWallpaper hasn't attached the element yet (audioVersion
+    // starts at 0); VideoWallpaper bumps it after assigning mediaRef.current, so skip
     // the initial run to avoid attaching createMediaElementSource twice to the
     // same element (which throws InvalidStateError).
     if (audioVersion === 0) return
@@ -39,7 +39,7 @@ export default function LofiVisualizer() {
     window.addEventListener('resize', resize)
 
     const init = () => {
-      const el = audioRef.current
+      const el = mediaRef.current
       if (!el) return
       try {
         audioCtx = new AudioContext()
@@ -117,7 +117,7 @@ export default function LofiVisualizer() {
         // ignore
       }
     }
-  }, [audioRef, barCount, audioVersion, resumeRef])
+  }, [mediaRef, barCount, audioVersion, resumeRef])
 
   return (
     <canvas

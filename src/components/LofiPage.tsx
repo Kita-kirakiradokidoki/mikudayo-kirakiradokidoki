@@ -33,7 +33,6 @@ export default function LofiPage() {
 
   return (
     <div className="relative isolate min-h-[100dvh] overflow-hidden bg-[#1e1b2e] text-[#f5f5f0]">
-      <VideoWallpaper />
       <AmbientAnimation mode={mode} />
 
       {/* warm vignette over the animation */}
@@ -43,6 +42,8 @@ export default function LofiPage() {
       />
 
       <LofiAudioProvider>
+        {/* full-screen video wallpaper — owns the shared media element */}
+        <VideoWallpaper />
         {/* top bar: back / title / ambient switcher */}
         <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between px-5 py-4 md:px-8">
           <a

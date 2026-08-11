@@ -2,71 +2,70 @@ import { useEffect, useRef, useState } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useLofiAudio } from './LofiAudioContext'
 import { SITE_CONFIG } from '../../site.config'
-import { withBase } from '../../lib/base'
 import { useLang } from '../../i18n'
 
 export default function LofiPlayer() {
   const { pick } = useLang()
-  const tracks = SITE_CONFIG.lofi.audio.tracks
-  const { audioRef, wantPlayRef, requestPlay, bump } = useLofiAudio()
-  const [index, setIndex] = useState(0)
+  const videos = SITE_CONFIG.lofi.wallpapers.videos
+  const { mediaRef, index, setIndex, wantPlayRef, requestPlay, audioVersion } = useLofiAudio()
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.6)
   const [muted, setMuted] = useState(false)
   const [needsGesture, setNeedsGesture] = useState(false)
   const hasMountedRef = useRef(false)
 
-  const current = tracks.length > 0 ? tracks[index % tracks.length] : null
+  const current = videos.length > 0 ? videos[index % videos.length] : null
 
-  // create / swap the audio element when the track changes
+  // playback control — runs once per video element swap. The element is owned by
+  // VideoWallpaper; we attach listeners and drive play()/pause() on it here.
   useEffect(() => {
-    if (!current) return
-    const el = new Audio(withBase(current.url))
-    el.loop = false
-    el.preload = 'metadata'
+    // audioVersion 0 means VideoWallpaper hasn't attached an element yet
+    if (audioVersion === 0) return
+    const el = mediaRef.current
+    if (!el) return
+
     el.volume = muted ? 0 : volume
     el.muted = muted
-    el.addEventListener('play', () => {
+
+    const onPlay = () => {
       setPlaying(true)
       setNeedsGesture(false)
-    })
-    el.addEventListener('pause', () => setPlaying(false))
-    el.addEventListener('ended', () => setIndex((i) => (i + 1) % tracks.length))
-    audioRef.current = el
-    bump()
+    }
+    const onPause = () => setPlaying(false)
+    el.addEventListener('play', onPlay)
+    el.addEventListener('pause', onPause)
+
     if (!hasMountedRef.current) {
       // first mount: attempt autoplay exactly once (subject to browser gesture policy)
       hasMountedRef.current = true
       wantPlayRef.current = true
-      if (SITE_CONFIG.lofi.audio.autoplay) {
+      if (SITE_CONFIG.lofi.autoplay) {
         const p = el.play()
         if (p && typeof p.catch === 'function') p.catch(() => setNeedsGesture(true))
       }
     } else if (wantPlayRef.current) {
-      // track change while the user was playing: auto-continue (paused → stays paused)
+      // index change while the user was playing: auto-continue (paused → stays paused)
       const p = el.play()
       if (p && typeof p.catch === 'function') p.catch(() => setNeedsGesture(true))
     }
+
     return () => {
-      el.pause()
-      el.removeAttribute('src')
-      el.load()
-      audioRef.current = null
-      setPlaying(false)
+      el.removeEventListener('play', onPlay)
+      el.removeEventListener('pause', onPause)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.url])
+  }, [audioVersion])
 
-  // keep volume / mute in sync without recreating the element
+  // keep volume / mute in sync without re-attaching listeners
   useEffect(() => {
-    const el = audioRef.current
+    const el = mediaRef.current
     if (!el) return
     el.volume = muted ? 0 : volume
     el.muted = muted
-  }, [volume, muted])
+  }, [volume, muted, audioVersion])
 
   const toggle = () => {
-    const el = audioRef.current
+    const el = mediaRef.current
     if (!el) return
     if (el.paused) {
       requestPlay()
@@ -76,8 +75,10 @@ export default function LofiPlayer() {
     }
   }
 
-  const goTo = (next: number) => {
-    setIndex((next + tracks.length) % tracks.length)
+  const goTo = (delta: number) => {
+    const len = videos.length
+    if (len === 0) return
+    setIndex((i) => (i + delta + len) % len)
   }
 
   if (!current) return null
@@ -111,13 +112,12 @@ export default function LofiPlayer() {
           <div className="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black" />
         </div>
 
-        {/* track info + controls */}
+        {/* video info + controls */}
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-amber-100">{current.title}</p>
-          <p className="truncate text-xs text-white/50">{current.artist}</p>
           <div className="mt-2 flex items-center gap-3">
             <button
-              onClick={() => goTo(index - 1)}
+              onClick={() => goTo(-1)}
               aria-label={pick({ zh: '上一首', en: 'Previous' })}
               className="text-white/60 transition-colors hover:text-amber-200"
             >
@@ -131,7 +131,7 @@ export default function LofiPlayer() {
               {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
             </button>
             <button
-              onClick={() => goTo(index + 1)}
+              onClick={() => goTo(1)}
               aria-label={pick({ zh: '下一首', en: 'Next' })}
               className="text-white/60 transition-colors hover:text-amber-200"
             >

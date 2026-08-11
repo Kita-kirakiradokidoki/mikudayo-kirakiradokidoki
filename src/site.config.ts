@@ -24,25 +24,19 @@ export type Palette = {
 
 export type PaletteId = 'classic' | 'aurora' | 'ember' | 'sakura'
 
-export type LofiTrack = {
+export type LofiVideo = {
   url: string
   title: string
-  artist: string
 }
 
 export type LofiConfig = {
   /** master switch for the /lofi immersive page */
   enabled: boolean
-  audio: {
-    /** auto-start playback on entering the /lofi page (subject to browser gesture policy) */
-    autoplay: boolean
-    tracks: LofiTrack[]
-  }
+  /** auto-start playback on entering the /lofi page (subject to browser gesture policy) */
+  autoplay: boolean
   wallpapers: {
-    /** muted looping video wallpapers, rotated with cross-fade */
-    videos: string[]
-    /** seconds between video swaps (single video → never rotates) */
-    swapSeconds: number
+    /** self-hosted videos with baked-in audio; looped and cycled manually via the player */
+    videos: LofiVideo[]
   }
   visualizer: {
     /** master switch for the bar-spectrum visualizer */
@@ -345,23 +339,12 @@ export const SITE_CONFIG: SiteConfig = {
 
   lofi: {
     enabled: true,
-    audio: {
-      autoplay: true,
-      tracks: [
-        { url: '/lofi/audio/track-01.mp3', title: 'Midnight Rain', artist: 'CC0 Lo-fi Vol.1' },
-        { url: '/lofi/audio/track-02.mp3', title: 'Study in C', artist: 'CC0 Lo-fi Vol.1' },
-        { url: '/lofi/audio/track-03.mp3', title: 'Paper Planes', artist: 'CC0 Lo-fi Vol.1' },
-        { url: '/lofi/audio/track-04.mp3', title: 'Quiet Window', artist: 'CC0 Lo-fi Vol.1' },
-        { url: '/lofi/audio/track-05.mp3', title: 'Last Page', artist: 'CC0 Lo-fi Vol.1' },
-      ],
-    },
+    autoplay: true,
     wallpapers: {
+      // videos with baked-in audio (音画一体); drop files into public/lofi/videos/ and add a line here
       videos: [
-        '/lofi/wallpapers/rain.mp4',
-        '/lofi/wallpapers/night.mp4',
-        '/lofi/wallpapers/fireplace.mp4',
+        { url: '/lofi/videos/video-01.mp4', title: 'Video 01' },
       ],
-      swapSeconds: 50,
     },
     visualizer: {
       enabled: true,
