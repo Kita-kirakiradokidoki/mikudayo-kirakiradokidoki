@@ -2,7 +2,13 @@ import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { loadEnv } from './server/env.mjs'
-import { steamApi, neteaseApi } from './server/api.mjs'
+import {
+  steamApi,
+  neteaseApi,
+  bilibiliApi,
+  bangumiApi,
+  anilistApi,
+} from './server/api.mjs'
 import { isConfigured } from './server/steam.mjs'
 import { isNeteaseConfigured } from './server/netease.mjs'
 
@@ -16,6 +22,9 @@ const PORT = process.env.PORT || 3000
 // Steam Web API proxy (keeps STEAM_API_KEY server-side)
 app.use(steamApi())
 app.use(neteaseApi())
+app.use(bilibiliApi())
+app.use(bangumiApi())
+app.use(anilistApi())
 
 // Gzip 压缩
 app.use(express.static(path.join(__dirname, 'dist'), {

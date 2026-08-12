@@ -1,3 +1,6 @@
+export { bilibiliApi } from './bilibili.mjs'
+export { bangumiApi } from './bangumi.mjs'
+export { anilistApi } from './anilist.mjs'
 import { getSteamProfile, isConfigured, SteamError } from './steam.mjs'
 import {
   searchSong,

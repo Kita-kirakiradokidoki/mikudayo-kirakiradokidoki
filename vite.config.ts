@@ -2,7 +2,13 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { loadEnv } from './server/env.mjs'
-import { steamApi, neteaseApi } from './server/api.mjs'
+import {
+  steamApi,
+  neteaseApi,
+  bilibiliApi,
+  bangumiApi,
+  anilistApi,
+} from './server/api.mjs'
 
 /**
  * Mount the Steam Web API proxy on the dev server so `npm run dev` behaves
@@ -34,6 +40,48 @@ function neteaseApiPlugin(): Plugin {
   }
 }
 
+/**
+ * Mount the Bilibili proxy on the dev server so `npm run dev` behaves
+ * exactly like production (`npm start`).
+ */
+function bilibiliApiPlugin(): Plugin {
+  return {
+    name: 'bilibili-api-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(bilibiliApi())
+    },
+  }
+}
+
+/**
+ * Mount the Bangumi proxy on the dev server so `npm run dev` behaves
+ * exactly like production (`npm start`).
+ */
+function bangumiApiPlugin(): Plugin {
+  return {
+    name: 'bangumi-api-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(bangumiApi())
+    },
+  }
+}
+
+/**
+ * Mount the AniList proxy on the dev server so `npm run dev` behaves
+ * exactly like production (`npm start`).
+ */
+function anilistApiPlugin(): Plugin {
+  return {
+    name: 'anilist-api-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(anilistApi())
+    },
+  }
+}
+
 export default defineConfig({
   base: process.env.PAGES_BASE_URL || '/',
   // .ttc (TrueType Collection) isn't in Vite's default asset list; treat it as a static asset.
@@ -45,5 +93,13 @@ export default defineConfig({
       ignored: ['**/.vs/**'],
     },
   },
-  plugins: [react(), tailwindcss(), steamApiPlugin(), neteaseApiPlugin()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    steamApiPlugin(),
+    neteaseApiPlugin(),
+    bilibiliApiPlugin(),
+    bangumiApiPlugin(),
+    anilistApiPlugin(),
+  ],
 })

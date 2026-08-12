@@ -122,6 +122,24 @@ export type SiteConfig = {
     /** override when the proxy is hosted on another origin */
     apiBase: string
   }
+  bilibili: {
+    /** master switch for the Bilibili card on the data wall */
+    enabled: boolean
+    /** override when the proxy is hosted on another origin */
+    apiBase: string
+  }
+  bangumi: {
+    /** master switch for the Bangumi half of the anime card */
+    enabled: boolean
+    /** override when the proxy is hosted on another origin */
+    apiBase: string
+  }
+  anilist: {
+    /** master switch for the AniList half of the anime card */
+    enabled: boolean
+    /** override when the proxy is hosted on another origin */
+    apiBase: string
+  }
   grid: {
     enabled: boolean
   }
@@ -326,6 +344,21 @@ export const SITE_CONFIG: SiteConfig = {
     apiBase: '/api/netease',
   },
 
+  bilibili: {
+    enabled: true,
+    apiBase: '/api/bilibili',
+  },
+
+  bangumi: {
+    enabled: true,
+    apiBase: '/api/bangumi',
+  },
+
+  anilist: {
+    enabled: true,
+    apiBase: '/api/anilist',
+  },
+
   grid: {
     enabled: false,
   },
@@ -424,6 +457,28 @@ export const SITE_CONFIG: SiteConfig = {
       'netease.playlists': '推荐歌单',
       'netease.lyrics': '歌词',
       'netease.noLyrics': '暂无歌词',
+      'datawall.refresh': '立即刷新',
+      'datawall.updated': '更新于',
+      'datawall.loading': '正在连接…',
+      'datawall.configHint': '未配置数据源，请在服务器 .env 配置后刷新',
+      'datawall.bili.title': 'Bilibili',
+      'datawall.bili.noProxy': 'B站代理未配置，无法获取数据',
+      'datawall.bili.spaceLink': '打开 B站 主页',
+      'datawall.bili.followers': '粉丝',
+      'datawall.bili.videos': '视频',
+      'datawall.bili.following': '关注',
+      'datawall.bili.recent': '最近投稿',
+      'datawall.bili.noCookie': '服务端未配置 BILI_COOKIE，最近投稿列表暂不可用',
+      'datawall.anime.title': '追番 · Anime',
+      'datawall.anime.doing': '在看',
+      'datawall.anime.collect': '看过',
+      'datawall.anime.wish': '想看',
+      'datawall.anime.score': '均分',
+      'datawall.anime.watching': '正在追看',
+      'datawall.anime.total': '总数',
+      'datawall.anime.current': '追番中',
+      'datawall.anime.hours': '小时',
+      'datawall.anime.favourites': '最爱',
       'footer.tagline': '咕咕嘎嘎？',
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
       'lofi.title': '深夜自习室',
@@ -496,6 +551,28 @@ export const SITE_CONFIG: SiteConfig = {
       'netease.playlists': 'Playlists',
       'netease.lyrics': 'Lyrics',
       'netease.noLyrics': 'No lyrics available',
+      'datawall.refresh': 'Refresh now',
+      'datawall.updated': 'updated',
+      'datawall.loading': 'Connecting…',
+      'datawall.configHint': 'Source not configured — set it in the server .env and refresh',
+      'datawall.bili.title': 'Bilibili',
+      'datawall.bili.noProxy': 'Bilibili proxy not configured',
+      'datawall.bili.spaceLink': 'Open Bilibili profile',
+      'datawall.bili.followers': 'followers',
+      'datawall.bili.videos': 'videos',
+      'datawall.bili.following': 'following',
+      'datawall.bili.recent': 'Recent uploads',
+      'datawall.bili.noCookie': 'Server has no BILI_COOKIE; recent uploads unavailable',
+      'datawall.anime.title': 'Anime',
+      'datawall.anime.doing': 'watching',
+      'datawall.anime.collect': 'completed',
+      'datawall.anime.wish': 'planned',
+      'datawall.anime.score': 'avg',
+      'datawall.anime.watching': 'Now watching',
+      'datawall.anime.total': 'total',
+      'datawall.anime.current': 'current',
+      'datawall.anime.hours': 'hours',
+      'datawall.anime.favourites': 'Favourites',
       'footer.tagline': 'I am a PlaceHolder',
       'footer.built': 'Built with React · GSAP · Tailwind · Bun.',
       'lofi.title': 'Lo-fi Study Room',

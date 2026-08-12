@@ -1,6 +1,16 @@
 Style From: https://github.com/nagi-studio/nagi-bench
 Build WITH AI
 
+## 右下角数据卡（B站 · 追番 · Steam）
+
+右下角浮动栏展示个人数字足迹：**B站**（粉丝/视频/最近投稿）、**追番**（Bangumi + AniList 合并）、
+**Steam**（在线状态/时长），与 Player / Lofi 同款交互（hover 展开）。
+
+依赖服务端代理（B站 / Bangumi / AniList / Steam），**需部署到自有服务器** —— GitHub Pages 纯静态
+托管下代理不可用（卡自动隐藏）。账号身份放服务端 `.env`（`BILI_UID` / `BANGUMI_USERNAME` /
+`ANILIST_USERNAME`），`src/site.config.ts` 只控制各卡开关；B站最近投稿可选配置 `BILI_COOKIE`
+（见 `.env.example`）。完整部署步骤见 [`docs/deployment.md`](docs/deployment.md)。
+
 ## Steam 实时状态卡片
 
 右下角浮动菜单会实时展示指定 Steam 账号的个人资料与游玩数据（在线状态、Steam 等级、

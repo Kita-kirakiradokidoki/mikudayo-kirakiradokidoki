@@ -21,6 +21,8 @@ import FloatingLayer from './components/FloatingLayer'
 import TestPage from './components/TestPage'
 import LofiPage from './components/LofiPage'
 import LofiEntry from './components/LofiEntry'
+import FloatingBili from './components/FloatingBili'
+import FloatingAnime from './components/FloatingAnime'
 import { AudioProvider, useBgm } from './components/AudioProvider'
 import { SITE_CONFIG } from './site.config'
 
@@ -156,6 +158,8 @@ function Shell() {
         <FloatingPlayer />
         <FloatingNetease />
         <FloatingSteam />
+        <FloatingBili />
+        <FloatingAnime />
         <LofiEntry />
       </FloatingLayer>
       <GridSpotlight />
