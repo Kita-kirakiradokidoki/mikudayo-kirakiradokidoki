@@ -43,18 +43,38 @@ const CommentTerminal = memo(function CommentTerminal() {
       const follow = () => {
         body.scrollTop = body.scrollHeight
       }
+      /*
+        Author and body are whatever a visitor typed, and GSAP's TextPlugin is an HTML
+        sink: it runs a `text:` value through `_tempDiv.innerHTML` and writes the result
+        back with `target.innerHTML`, passing element nodes through as `outerHTML`. A
+        comment containing `<img src=x onerror=…>` therefore became a live element that
+        re-ran on every loop. So we never hand these strings to a `text:` tween: the tween
+        drives a plain number and we write `textContent` ourselves — the same reveal, at
+        the same pace (TextPlugin's own `ratio * length + 0.5 | 0` rounding), with the
+        visitor's text left as text. The reduced-motion branch above already works this way.
+        `Array.from` splits by code point so a surrogate pair is never cut in half.
+      */
       const tl = gsap.timeline({ repeat: -1, repeatDelay: 0.8 })
       entries.forEach((entry) => {
-        tl.set(labelRef.current, { text: entry.id })
-          .to(text, {
+        const units = Array.from(entry.text)
+        const typed = { progress: 0 }
+        tl.call(() => {
+          if (labelRef.current) labelRef.current.textContent = entry.id
+        })
+          .to(typed, {
+            progress: 1,
             duration: gsap.utils.clamp(2, 9, entry.text.length * 0.028),
-            text: entry.text,
             ease: 'none',
-            onUpdate: follow,
+            onUpdate: () => {
+              text.textContent = units.slice(0, Math.round(typed.progress * units.length)).join('')
+              follow()
+            },
           })
           .to({}, { duration: 2.8 })
           .to(body, { autoAlpha: 0, duration: 0.3, ease: 'power1.in' })
-          .set(text, { text: '' })
+          .call(() => {
+            text.textContent = ''
+          })
           .set(body, { scrollTop: 0 })
           .to(body, { autoAlpha: 1, duration: 0.2 })
       })
