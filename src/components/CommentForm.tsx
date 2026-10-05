@@ -102,14 +102,17 @@ export default function CommentForm({
         >
           {submitting ? t('comments.sending') : t('comments.submit')}
         </button>
-        {notice && (
-          <span
-            className={notice.tone === 'ok' ? 'text-accent font-mono text-xs' : 'text-dim font-mono text-xs'}
-            role="status"
-          >
-            {notice.text}
-          </span>
-        )}
+        {/*
+          The live region stays mounted and only its text changes: a `role=status`
+          element that is inserted already holding its message is announced
+          unreliably, because screen readers register live regions on mount.
+        */}
+        <span
+          role="status"
+          className={notice?.tone === 'ok' ? 'text-accent font-mono text-xs' : 'text-dim font-mono text-xs'}
+        >
+          {notice?.text ?? ''}
+        </span>
         <span className="text-dim ml-auto font-mono text-[10px] tracking-[0.2em]">
           {text.length}/{COMMENTS_TEXT_MAX}
         </span>
