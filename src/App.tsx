@@ -6,6 +6,7 @@ import { ScrollTrigger } from './lib/gsap'
 import TopBar from './components/TopBar'
 import Hero from './components/Hero'
 import CommentMarquee from './components/CommentMarquee'
+import CommentBoard from './components/CommentBoard'
 import TagFilter from './components/TagFilter'
 import PostCard from './components/PostCard'
 import PostView from './components/PostView'
@@ -143,6 +144,7 @@ function Shell() {
                 />
               </div>
             </div>
+            <CommentBoard />
           </>
         )}
       </main>
