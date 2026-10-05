@@ -21,6 +21,7 @@ import FloatingNetease from './components/FloatingNetease'
 import FloatingLayer from './components/FloatingLayer'
 import TestPage from './components/TestPage'
 import LofiPage from './components/LofiPage'
+import ManagePage from './components/ManagePage'
 import LofiEntry from './components/LofiEntry'
 import FloatingBili from './components/FloatingBili'
 import FloatingAnime from './components/FloatingAnime'
@@ -37,6 +38,11 @@ function isLofiRoute(): boolean {
   return window.location.pathname.replace(/\/+$/, '') === '/lofi'
 }
 
+function isManageRoute(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.location.pathname.replace(/\/+$/, '') === '/manage'
+}
+
 function Shell() {
   const { lang } = useLang()
   const { setActive, setTrack } = useBgm()
@@ -44,6 +50,7 @@ function Shell() {
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [testRoute] = useState<boolean>(isTestRoute)
   const [lofiRoute] = useState<boolean>(isLofiRoute)
+  const [manageRoute] = useState<boolean>(isManageRoute)
 
   const allTags = useMemo(
     () => [...new Set(POSTS.flatMap((p) => p.tags))].sort(),
@@ -64,9 +71,10 @@ function Shell() {
     // The lofi page silences the main-site BGM itself (LofiPage calls
     // setActive(false) on mount). Child effects run before parent effects,
     // so without this guard Shell would re-enable the BGM right after.
-    if (lofiRoute) return
+    // /manage renders no player at all, so the BGM would be unstoppable there.
+    if (lofiRoute || manageRoute) return
     setActive(selectedPost === null)
-  }, [selectedPost, setActive, lofiRoute])
+  }, [selectedPost, setActive, lofiRoute, manageRoute])
 
   // clear any article track override when the page changes
   useEffect(() => {
@@ -91,6 +99,15 @@ function Shell() {
 
   if (lofiRoute && SITE_CONFIG.lofi.enabled) {
     return <LofiPage />
+  }
+
+  if (manageRoute) {
+    return (
+      <div className={`${SITE_CONFIG.grid.enabled ? 'bg-blueprint' : ''} min-h-[100dvh]`}>
+        <Background />
+        <ManagePage onExit={() => (window.location.pathname = '/')} />
+      </div>
+    )
   }
 
   if (testRoute) {
