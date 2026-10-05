@@ -31,6 +31,13 @@ export class CommentsRequestError extends Error {
   }
 }
 
+/**
+ * What a submission attempt reports back. The code matters to the UI: a rate
+ * limit (`too_many_requests`) deserves its own wording, everything else shares
+ * one message.
+ */
+export type CommentSubmitResult = { ok: boolean; code?: string }
+
 /** Failures that mean "there is no comment service here" (static hosting). */
 export const COMMENTS_SILENT_CODES = new Set(['bad_response', 'unknown_route', 'method_not_allowed'])
 
@@ -145,8 +152,8 @@ export type UseCommentsResult = {
   silent: boolean
   loading: boolean
   submitting: boolean
-  /** resolves false when the comment was rejected; `error` then says why */
-  submit: (author: string, text: string, website?: string) => Promise<boolean>
+  /** `{ ok: false, code }` when the comment was rejected; `error` then says why */
+  submit: (author: string, text: string, website?: string) => Promise<CommentSubmitResult>
   refresh: () => void
 }
 
@@ -201,19 +208,21 @@ export function useComments({
   }, [enabled, load])
 
   const submit = useCallback(
-    async (author: string, text: string, website = '') => {
+    async (author: string, text: string, website = ''): Promise<CommentSubmitResult> => {
       setSubmitting(true)
       try {
         await submitComment({ author, text, postId, website, apiBase })
         await load() // show the visitor their own comment straight away
-        return true
+        return { ok: true }
       } catch (err) {
         const failure =
           err instanceof CommentsRequestError
             ? err
             : new CommentsRequestError(err instanceof Error ? err.message : 'Comment request failed', 'network_error')
         setError(failure)
-        return false
+        // A failure that is not a CommentsRequestError — a thrown fetch, say — was
+        // wrapped above, so `code` is always something the caller can branch on.
+        return { ok: false, code: failure.code }
       } finally {
         setSubmitting(false)
       }

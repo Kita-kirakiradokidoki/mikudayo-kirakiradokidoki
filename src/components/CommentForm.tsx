@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useLang } from '../i18n'
-import { COMMENTS_AUTHOR_MAX, COMMENTS_TEXT_MAX } from '../lib/comments'
+import { COMMENTS_AUTHOR_MAX, COMMENTS_TEXT_MAX, type CommentSubmitResult } from '../lib/comments'
 
 /**
  * The one comment form, shared by the homepage guestbook and every article
@@ -13,7 +13,7 @@ export default function CommentForm({
   onSubmit,
   submitting,
 }: {
-  onSubmit: (author: string, text: string, website: string) => Promise<boolean>
+  onSubmit: (author: string, text: string, website: string) => Promise<CommentSubmitResult>
   submitting: boolean
 }) {
   const { t } = useLang()
@@ -21,6 +21,18 @@ export default function CommentForm({
   const [text, setText] = useState('')
   const [website, setWebsite] = useState('')
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null)
+
+  // Editing a field invalidates the last notice: a stale "send failed" sitting
+  // next to a field being retyped reads as if the new text failed too.
+  const changeAuthor = (value: string) => {
+    setAuthor(value)
+    setNotice(null)
+  }
+
+  const changeText = (value: string) => {
+    setText(value)
+    setNotice(null)
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -40,12 +52,17 @@ export default function CommentForm({
       return
     }
 
-    const ok = await onSubmit(author, text, website)
-    if (ok) {
+    const result = await onSubmit(author, text, website)
+    if (result.ok) {
+      // Clear the body directly rather than through `changeText`, which would
+      // wipe the notice we are about to set.
       setText('')
       setNotice({ tone: 'ok', text: t('comments.sent') })
     } else {
-      setNotice({ tone: 'bad', text: t('comments.sendFailed') })
+      setNotice({
+        tone: 'bad',
+        text: result.code === 'too_many_requests' ? t('comments.tooFast') : t('comments.sendFailed'),
+      })
     }
   }
 
@@ -58,7 +75,7 @@ export default function CommentForm({
           </span>
           <input
             value={author}
-            onChange={(e) => setAuthor(e.target.value)}
+            onChange={(e) => changeAuthor(e.target.value)}
             maxLength={COMMENTS_AUTHOR_MAX}
             placeholder={t('comments.namePlaceholder')}
             className="border-line bg-ink/40 text-paper placeholder:text-dim focus:border-accent mt-2 w-full rounded-none border px-3 py-2 text-sm outline-none"
@@ -71,7 +88,7 @@ export default function CommentForm({
           </span>
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => changeText(e.target.value)}
             maxLength={COMMENTS_TEXT_MAX}
             rows={3}
             placeholder={t('comments.bodyPlaceholder')}
