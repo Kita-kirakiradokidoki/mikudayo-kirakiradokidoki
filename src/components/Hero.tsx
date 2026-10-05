@@ -100,6 +100,34 @@ export default function Hero() {
           {t('hero.sub')}
         </p>
 
+        {/*
+          Deliberately not part of the stats row below: the oversized title and the
+          comments terminal push that row past the fold, so these counters would only
+          be seen by a visitor who scrolled.
+        */}
+        {views && (
+          <div
+            data-hero-views
+            className="border-line bg-ink/80 mt-10 inline-flex flex-wrap items-baseline gap-x-3 gap-y-3 border px-5 py-3.5 backdrop-blur-sm"
+          >
+            <span className="text-dim font-mono text-[11px] tracking-[0.25em] uppercase">
+              {t('meta.views')}
+            </span>
+            <span className="text-paper text-2xl tracking-normal md:text-3xl">
+              <AnimatedCount value={views.total} />
+            </span>
+            <span aria-hidden className="text-dim select-none">
+              ·
+            </span>
+            <span className="text-dim font-mono text-[11px] tracking-[0.25em] uppercase">
+              {t('meta.today')}
+            </span>
+            <span className="text-paper text-2xl tracking-normal md:text-3xl">
+              <AnimatedCount value={views.today} />
+            </span>
+          </div>
+        )}
+
         <div data-hero-fade className="mt-10">
           <CommentTerminal />
         </div>
@@ -128,22 +156,6 @@ export default function Hero() {
                   {new Date().toISOString().slice(0, 7).replace('-', '.')}
                 </dd>
               </div>
-            )}
-            {views && (
-              <>
-                <div>
-                  <dt>{t('meta.views')}</dt>
-                  <dd className="text-paper mt-1 text-2xl tracking-normal md:text-3xl">
-                    <AnimatedCount value={views.total} />
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t('meta.today')}</dt>
-                  <dd className="text-paper mt-1 text-2xl tracking-normal md:text-3xl">
-                    <AnimatedCount value={views.today} />
-                  </dd>
-                </div>
-              </>
             )}
           </dl>
         )}
