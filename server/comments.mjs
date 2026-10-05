@@ -195,24 +195,59 @@ export class CommentsError extends Error {
 }
 
 /**
- * The visitor's address as seen through Nginx. The proxy passes the real address
- * in `X-Forwarded-For`, so `req.socket.remoteAddress` would always be 127.0.0.1.
+ * The visitor's address as seen through Nginx, used to key the rate limiters.
+ *
+ * Behind the proxy `req.socket.remoteAddress` is always 127.0.0.1, so the real
+ * address has to come from a header — and which header, and which part of it,
+ * decides whether the limiters can be bypassed.
+ *
+ * `X-Real-IP` is the trustworthy one: our Nginx sets it with
+ * `proxy_set_header X-Real-IP $remote_addr`, overwriting whatever the client
+ * sent.
+ *
+ * `X-Forwarded-For` is only trustworthy at its *end*. Nginx sets it with
+ * `$proxy_add_x_forwarded_for`, which is the client's own `X-Forwarded-For`
+ * followed by `, ` and the real address. Everything before the last segment is
+ * therefore attacker-supplied: reading the first segment would let a visitor
+ * rotate one header per request and never hit the limit. Taking the last
+ * segment instead is only correct while exactly one proxy sits in front of us —
+ * hence preferring `X-Real-IP`, which no client can forge.
  */
 export function clientIp(req) {
+  const realIp = req.headers?.['x-real-ip']
+  const real = Array.isArray(realIp) ? realIp[0] : realIp
+  if (typeof real === 'string' && real.trim()) return real.trim()
+
   const forwarded = req.headers?.['x-forwarded-for']
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded
-  if (typeof raw === 'string' && raw.trim()) return raw.split(',')[0].trim()
+  const raw = Array.isArray(forwarded) ? forwarded[forwarded.length - 1] : forwarded
+  if (typeof raw === 'string' && raw.trim()) {
+    const hops = raw.split(',')
+    return hops[hops.length - 1].trim()
+  }
+
   return req.socket?.remoteAddress ?? 'unknown'
 }
 
-/** Drop stale keys so forged addresses cannot grow the table without bound. */
+/**
+ * Drop stale keys so forged addresses cannot grow the table without bound, then
+ * shed the oldest survivors if that was not enough.
+ *
+ * The overflow is evicted one key at a time rather than cleared wholesale: a
+ * full reset would drop every rate limit in force, so a visitor who could flood
+ * enough distinct addresses would unlock their own block. Eviction only costs
+ * us the least recent records. `Map` iterates in insertion order, so the first
+ * key it yields is the oldest.
+ */
 function prune(map, now, windowMs, maxKeys) {
   if (map.size <= maxKeys) return
   for (const [key, entry] of map) {
     const stamp = typeof entry === 'number' ? entry : entry.start
     if (now - stamp >= windowMs) map.delete(key)
   }
-  if (map.size > maxKeys) map.clear()
+  // `map.size > 0` also bounds a nonsensical negative `maxKeys`, which would
+  // otherwise spin here forever: `map.delete(undefined)` on an empty map is a
+  // no-op, so the loop condition would never clear.
+  while (map.size > maxKeys && map.size > 0) map.delete(map.keys().next().value)
 }
 
 /** One comment per address per window. */
