@@ -107,6 +107,7 @@ function commentsApiPlugin(): Plugin {
     name: 'comments-api-dev',
     apply: 'serve',
     configureServer(server) {
+      loadEnv()
       server.middlewares.use(commentsApi())
     },
   }

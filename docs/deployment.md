@@ -166,6 +166,7 @@ sudo certbot --nginx -d blog.example.com   # 自动配 HTTPS
 首页留言板与文章评论区由 `server/comments.mjs` 提供，留言写在 `data/comments.json`。
 
 - 与 `data/stats.json` 一样属于运行时数据：不在 `dist/` 内，`npm run build` 不覆盖，已在 `.gitignore` 中，**迁移服务器时需单独备份**。
+- 若在同一台机器上同时跑 `npm run dev` 和 `npm start`，两个进程各持有一份 `data/comments.json` 的内存副本，写盘是「最后落盘者覆盖」，一边新增的留言可能被另一边抹掉——开发时建议不要同时跑。
 - 访客留言**立即公开**，无审核。发现垃圾留言用下方管理页删除。
 - 管理页：访问 `你的网址/manage`，输入 `.env` 里的 `COMMENTS_ADMIN_KEY`。
 - 未配置 `COMMENTS_ADMIN_KEY` 时删除接口关闭（返回 503），留言提交与展示照常。
