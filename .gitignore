@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Runtime visit counters — server-owned state, never committed.
+data/
 .vscode/
 *.local
 .env

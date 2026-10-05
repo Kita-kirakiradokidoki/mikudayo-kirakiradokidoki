@@ -8,6 +8,7 @@ import {
   bilibiliApi,
   bangumiApi,
   anilistApi,
+  statsApi,
 } from './server/api.mjs'
 import { isConfigured } from './server/steam.mjs'
 import { isNeteaseConfigured } from './server/netease.mjs'
@@ -25,6 +26,9 @@ app.use(neteaseApi())
 app.use(bilibiliApi())
 app.use(bangumiApi())
 app.use(anilistApi())
+
+// Public visit counter (persists to data/stats.json)
+app.use(statsApi())
 
 // Gzip 压缩
 app.use(express.static(path.join(__dirname, 'dist'), {

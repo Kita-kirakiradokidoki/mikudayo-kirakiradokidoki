@@ -3,12 +3,20 @@ import { gsap, useGSAP, SplitText, prefersReducedMotion, hasFinePointer } from '
 import { useLang } from '../i18n'
 import { POSTS } from '../data/posts'
 import { SITE_CONFIG } from '../site.config'
+import { useStats } from '../lib/stats'
+import AnimatedCount from './AnimatedCount'
 import CommentTerminal from './CommentTerminal'
 
 export default function Hero() {
   const { t } = useLang()
   const scope = useRef<HTMLElement>(null)
   const { brand, hero: heroCfg } = SITE_CONFIG
+
+  const stats = useStats({ enabled: SITE_CONFIG.stats.enabled, apiBase: SITE_CONFIG.stats.apiBase })
+
+  // Stays null while loading, and stays null on hosts without a visit counter, so
+  // the two cells simply do not render rather than showing a placeholder.
+  const views = heroCfg.showViews ? stats.data : null
 
   const pad = (n: number) => String(n).padStart(2, '0')
   const allTags = [...new Set(POSTS.flatMap((p) => p.tags))]
@@ -120,6 +128,22 @@ export default function Hero() {
                   {new Date().toISOString().slice(0, 7).replace('-', '.')}
                 </dd>
               </div>
+            )}
+            {views && (
+              <>
+                <div>
+                  <dt>{t('meta.views')}</dt>
+                  <dd className="text-paper mt-1 text-2xl tracking-normal md:text-3xl">
+                    <AnimatedCount value={views.total} />
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t('meta.today')}</dt>
+                  <dd className="text-paper mt-1 text-2xl tracking-normal md:text-3xl">
+                    <AnimatedCount value={views.today} />
+                  </dd>
+                </div>
+              </>
             )}
           </dl>
         )}

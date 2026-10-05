@@ -140,6 +140,12 @@ export type SiteConfig = {
     /** override when the proxy is hosted on another origin */
     apiBase: string
   }
+  stats: {
+    /** master switch for the public visit counter shown in the hero */
+    enabled: boolean
+    /** override when the server is hosted on another origin */
+    apiBase: string
+  }
   grid: {
     enabled: boolean
   }
@@ -149,6 +155,8 @@ export type SiteConfig = {
     showStats: boolean
     showBadge: boolean
     showUpdated: boolean
+    /** show the public all-time / today visit counts */
+    showViews: boolean
   }
   strings: {
     zh: Record<string, string>
@@ -359,6 +367,11 @@ export const SITE_CONFIG: SiteConfig = {
     apiBase: '/api/anilist',
   },
 
+  stats: {
+    enabled: true,
+    apiBase: '/api/stats',
+  },
+
   grid: {
     enabled: false,
   },
@@ -368,6 +381,7 @@ export const SITE_CONFIG: SiteConfig = {
     showStats: true,
     showBadge: true,
     showUpdated: true,
+    showViews: true,
   },
 
   lofi: {
@@ -413,6 +427,8 @@ export const SITE_CONFIG: SiteConfig = {
       'meta.posts': '文章',
       'meta.tags': '标签',
       'meta.updated': '更新于',
+      'meta.views': '访问',
+      'meta.today': '今日',
       'post.readMore': '阅读全文',
       'post.back': '返回首页',
       'post.published': '发布于',
@@ -507,6 +523,8 @@ export const SITE_CONFIG: SiteConfig = {
       'meta.posts': 'posts',
       'meta.tags': 'tags',
       'meta.updated': 'updated',
+      'meta.views': 'views',
+      'meta.today': 'today',
       'post.readMore': 'Read more',
       'post.back': 'Back to home',
       'post.published': 'Published',

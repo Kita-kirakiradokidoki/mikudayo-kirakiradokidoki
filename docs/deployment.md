@@ -93,6 +93,8 @@ pm2 startup   # 按提示执行输出命令，开机自启
 
 常用：`pm2 logs nagi-blog`、`pm2 restart nagi-blog`、`pm2 monit`。
 
+> **必须保持 fork 模式、`instances=1`。** 访问统计把计数放在进程内存里再落盘，多个实例会各写各的、互相覆盖。不要给这个应用加 `-i`（cluster 模式）。
+
 ## 7. Nginx 反向代理 + HTTPS
 
 1. 把域名 A 记录解析到服务器 IP。
@@ -140,6 +142,24 @@ sudo certbot --nginx -d blog.example.com   # 自动配 HTTPS
 - [ ] Steam 卡：在线状态与时长正常（不再是"代理未配置"）
 - [ ] 网易云播放器可搜索/播放
 - [ ] 单张卡故障不影响其他卡（可在某卡 `enabled` 置 false 验证）
+- [ ] 首页 Hero 统计行显示「访问 / 今日」两个数字，且刷新后 +1
+- [ ] `curl -s localhost:3000/api/stats/summary` 返回 `{"ok":true,...}`
+
+## 9. 访问统计数据
+
+首页 Hero 的「访问 / 今日」由 `server/stats.mjs` 提供，计数写在项目根目录的
+`data/stats.json`：
+
+```json
+{ "total": 12345, "today": 67, "date": "2026-10-05", "updatedAt": "..." }
+```
+
+- 该文件是**运行时数据**，不在 `dist/` 内，`npm run build` 不会覆盖它；已在 `.gitignore` 中。
+- 计数先记在进程内存，最多每 1.5 秒合并写一次盘；`pm2 stop` / `pm2 restart` 会先落盘再退出，**正常重启不丢数据**。
+- 只有 `kill -9` 或断电才会丢最多 1.5 秒的计数。
+- **迁移或重装服务器时必须单独备份 `data/stats.json`**，否则访问量归零。
+- 「今日」按北京时间（固定 +08:00）计算，与服务器时区无关。
+- 想清零重来：`rm data/stats.json && pm2 restart nagi-blog`。
 
 ## 常见问题
 
@@ -147,4 +167,6 @@ sudo certbot --nginx -d blog.example.com   # 自动配 HTTPS
 - **B站卡显示「代理未配置」**：站点没走 `server.js`（如仍部署在 Pages），或 `bilibili.enabled` 为 false。
 - **Bangumi 卡超时**：服务器到 `api.bgm.tv` 网络不通。确认服务器可 `curl https://api.bgm.tv/v0/users/sai`（网关/防火墙是否放行）。
 - **Steam 卡隐藏**：`STEAM_API_KEY` 未配置，或账号隐私为私密。
+- **首页看不到「访问 / 今日」**：静态托管（Pages）没有 `/api`，这两个数字会自动隐藏；或者 `stats.enabled` / `hero.showViews` 被置为 false。此时其余页面完全正常，浏览器控制台不会有报错。
+- **访问量归零了**：`data/stats.json` 丢失（换服务器、重装、或误删目录）。该文件需单独备份。
 - **更新部署**：`git pull && npm run build && pm2 restart nagi-blog`；只改了 `.env` 账号 → `pm2 restart nagi-blog` 即可（无需重新构建）。

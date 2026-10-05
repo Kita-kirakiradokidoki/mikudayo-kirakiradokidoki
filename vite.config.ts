@@ -8,6 +8,7 @@ import {
   bilibiliApi,
   bangumiApi,
   anilistApi,
+  statsApi,
 } from './server/api.mjs'
 
 /**
@@ -82,6 +83,20 @@ function anilistApiPlugin(): Plugin {
   }
 }
 
+/**
+ * Mount the public visit counter on the dev server so `npm run dev` behaves
+ * exactly like production (`npm start`).
+ */
+function statsApiPlugin(): Plugin {
+  return {
+    name: 'stats-api-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(statsApi())
+    },
+  }
+}
+
 export default defineConfig({
   base: process.env.PAGES_BASE_URL || '/',
   // .ttc (TrueType Collection) isn't in Vite's default asset list; treat it as a static asset.
@@ -101,5 +116,6 @@ export default defineConfig({
     bilibiliApiPlugin(),
     bangumiApiPlugin(),
     anilistApiPlugin(),
+    statsApiPlugin(),
   ],
 })
