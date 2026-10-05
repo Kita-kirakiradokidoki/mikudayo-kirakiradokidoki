@@ -1,6 +1,7 @@
 import { memo, useMemo, useRef } from 'react'
 import { gsap, useGSAP, prefersReducedMotion } from '../lib/gsap'
-import { COMMENTS } from '../data/comments'
+import { SITE_CONFIG } from '../site.config'
+import { useComments } from '../lib/comments'
 
 const CommentTerminal = memo(function CommentTerminal() {
   const scope = useRef<HTMLDivElement>(null)
@@ -9,10 +10,18 @@ const CommentTerminal = memo(function CommentTerminal() {
   const labelRef = useRef<HTMLSpanElement>(null)
   const cursorRef = useRef<HTMLSpanElement>(null)
 
-  const entries = useMemo(
-    () => COMMENTS.map((c) => ({ id: c.author, text: c.text })),
-    [],
-  )
+  // Decorative: it must keep typing on a host with no comment service, so a
+  // `silent` failure is deliberately ignored — `useComments` still returns the
+  // seeded comments, and those are enough.
+  const { comments } = useComments({
+    postId: null,
+    enabled: SITE_CONFIG.comments.enabled,
+    apiBase: SITE_CONFIG.comments.apiBase,
+  })
+
+  // Keyed on the (already memoised) list, so the timeline below is rebuilt when
+  // the comments change and not on every unrelated re-render.
+  const entries = useMemo(() => comments.map((c) => ({ id: c.author, text: c.text })), [comments])
 
   useGSAP(
     () => {

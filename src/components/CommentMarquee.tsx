@@ -1,9 +1,26 @@
-import { memo, useRef } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import { gsap, useGSAP, ScrollTrigger, prefersReducedMotion } from '../lib/gsap'
-import { COMMENTS } from '../data/comments'
+import { SITE_CONFIG } from '../site.config'
+import { useComments } from '../lib/comments'
 
 const CommentMarquee = memo(function CommentMarquee() {
   const scope = useRef<HTMLDivElement>(null)
+
+  // Decorative like the hero terminal: it must keep scrolling on a host with no
+  // comment service, so `silent` is intentionally not treated as a reason to bail.
+  const { comments } = useComments({
+    postId: null,
+    enabled: SITE_CONFIG.comments.enabled,
+    apiBase: SITE_CONFIG.comments.apiBase,
+  })
+
+  // Memoised so the band's items keep a stable identity per data change. The
+  // scroll tween itself is content-agnostic (`xPercent: -50` on the track), so it
+  // is deliberately not rebuilt when the list grows — that would visibly jump.
+  const entries = useMemo(
+    () => comments.map((c) => ({ id: c.id, author: c.author, text: c.text })),
+    [comments],
+  )
 
   useGSAP(
     () => {
@@ -45,15 +62,15 @@ const CommentMarquee = memo(function CommentMarquee() {
     { scope },
   )
 
-  if (COMMENTS.length === 0) return null
+  if (entries.length === 0) return null
 
   const Sequence = () => (
     <>
-      {COMMENTS.map((c, i) => (
-        <span key={i} className="mx-7 inline-flex items-center gap-3 whitespace-nowrap">
+      {entries.map((entry) => (
+        <span key={entry.id} className="mx-7 inline-flex items-center gap-3 whitespace-nowrap">
           <span className="bg-night/40 inline-block size-1.5 rounded-full" />
-          <span className="text-night/70 font-normal">{c.author}</span>
-          <span>{c.text}</span>
+          <span className="text-night/70 font-normal">{entry.author}</span>
+          <span>{entry.text}</span>
         </span>
       ))}
     </>

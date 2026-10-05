@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { COMMENTS } from '../data/comments'
 
 /**
@@ -263,11 +263,20 @@ export function useComments({
     [apiBase, load, postId],
   )
 
-  return {
-    comments: [
+  // Memoised so the merged list keeps one identity per data change. Callers hand
+  // this to `useGSAP`/`useEffect` dependency arrays, and a fresh array on every
+  // render would rebuild those effects — for the hero typewriter that means
+  // restarting the timeline on renders that changed nothing.
+  const comments = useMemo(
+    () => [
       ...fetched.map((c) => ({ id: c.id, author: c.author, text: c.text, createdAt: c.createdAt })),
       ...seededFor(postId),
     ],
+    [fetched, postId],
+  )
+
+  return {
+    comments,
     error,
     silent,
     loading,
