@@ -11,6 +11,7 @@ import {
   readJsonBody,
   CommentsError,
   clientIp,
+  commentsApi,
 } from '../server/comments.mjs'
 
 const AT = Date.UTC(2026, 9, 5, 4, 0, 0) // fixed clock for every test
@@ -294,4 +295,268 @@ test('readJsonBody reports a stream error as a bad request', async () => {
     pending,
     (err) => err instanceof CommentsError && err.status === 400 && err.message === 'socket hang up',
   )
+})
+
+// --- HTTP middleware ---------------------------------------------------------
+// `mockRes`/`request` mirror `test/stats.test.mjs`; the fake `req` additionally
+// replays a body so `readJsonBody` sees a normal `data`/`end` pair.
+
+function mockRes() {
+  return {
+    statusCode: 0,
+    headers: {},
+    body: undefined,
+    setHeader(name, value) {
+      this.headers[name] = value
+    },
+    end(payload) {
+      this.body = payload ? JSON.parse(payload) : undefined
+    },
+  }
+}
+
+async function request(middleware, method, url, { body, headers = {} } = {}) {
+  const res = mockRes()
+  let nextCalled = false
+  const req = {
+    method,
+    url,
+    headers,
+    socket: { remoteAddress: '5.5.5.5' },
+    destroy() {},
+    on(event, fn) {
+      if (event === 'data' && body !== undefined) fn(Buffer.from(body))
+      if (event === 'end') queueMicrotask(fn)
+      return this
+    },
+  }
+  await middleware(req, res, () => {
+    nextCalled = true
+  })
+  return { res, nextCalled }
+}
+
+/**
+ * Admin deletes read the key from `process.env` on every request, so it has to
+ * stay set for the whole callback — hence `await fn()` rather than `return fn()`.
+ * Returning the promise directly would run the `finally` as soon as the callback
+ * suspends, restoring the key before its requests ever reach the middleware.
+ */
+async function withAdminKey(key, fn) {
+  const previous = process.env.COMMENTS_ADMIN_KEY
+  process.env.COMMENTS_ADMIN_KEY = key
+  try {
+    return await fn()
+  } finally {
+    if (previous === undefined) delete process.env.COMMENTS_ADMIN_KEY
+    else process.env.COMMENTS_ADMIN_KEY = previous
+  }
+}
+
+const api = (file) => commentsApi({ file, persistOnExit: false, flushDelayMs: 0 })
+const POST_JSON = JSON.stringify({ author: '小明', text: '你好', postId: null })
+
+test('GET returns an empty list initially', async () => {
+  const t = tempCommentsFile()
+  try {
+    const { res } = await request(api(t.file), 'GET', '/api/comments')
+    assert.equal(res.statusCode, 200)
+    assert.deepEqual(res.body, { ok: true, comments: [] })
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('POST stores a comment and returns it', async () => {
+  const t = tempCommentsFile()
+  try {
+    const { res } = await request(api(t.file), 'POST', '/api/comments', { body: POST_JSON })
+    assert.equal(res.statusCode, 200)
+    assert.equal(res.body.comment.author, '小明')
+    assert.equal(res.body.comment.postId, null)
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('POST rejects an oversized nickname without storing anything', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    const bad = JSON.stringify({ author: 'a'.repeat(25), text: 'hi' })
+    const { res } = await request(middleware, 'POST', '/api/comments', { body: bad })
+    assert.equal(res.statusCode, 400)
+    assert.equal(res.body.code, 'bad_request')
+    const list = await request(middleware, 'GET', '/api/comments')
+    assert.deepEqual(list.res.body.comments, [])
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('POST rejects an invalid post id without storing anything', async () => {
+  const t = tempCommentsFile()
+  try {
+    // `store.add()` trusts its caller, so this is the only place the post id is
+    // actually checked on the way in.
+    const middleware = api(t.file)
+    const bad = JSON.stringify({ author: 'a', text: 'hi', postId: 'Bad ID!' })
+    const { res } = await request(middleware, 'POST', '/api/comments', { body: bad })
+    assert.equal(res.statusCode, 400)
+    assert.equal(res.body.code, 'bad_request')
+    const list = await request(middleware, 'GET', '/api/comments')
+    assert.deepEqual(list.res.body.comments, [])
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('the honeypot accepts but silently discards bot submissions', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    const bot = JSON.stringify({ author: 'bot', text: 'buy now', website: 'http://spam' })
+    const { res } = await request(middleware, 'POST', '/api/comments', { body: bot })
+    assert.equal(res.statusCode, 200) // deliberately indistinguishable from success
+    const list = await request(middleware, 'GET', '/api/comments')
+    assert.deepEqual(list.res.body.comments, [])
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('a second comment from the same address is rate limited', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    const first = await request(middleware, 'POST', '/api/comments', { body: POST_JSON })
+    assert.equal(first.res.statusCode, 200)
+    const second = await request(middleware, 'POST', '/api/comments', { body: POST_JSON })
+    assert.equal(second.res.statusCode, 429)
+    assert.equal(second.res.body.code, 'too_many_requests')
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('GET filters by post', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    await request(middleware, 'POST', '/api/comments', {
+      body: JSON.stringify({ author: 'a', text: 'on post', postId: 'test-post' }),
+    })
+    const onPost = await request(middleware, 'GET', '/api/comments?post=test-post')
+    assert.equal(onPost.res.body.comments.length, 1)
+    const homepage = await request(middleware, 'GET', '/api/comments')
+    assert.deepEqual(homepage.res.body.comments, [])
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('DELETE requires the configured admin key', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    const created = await request(middleware, 'POST', '/api/comments', { body: POST_JSON })
+    const id = created.res.body.comment.id
+
+    const noKey = await request(middleware, 'DELETE', `/api/comments/${id}`)
+    assert.equal(noKey.res.statusCode, 503) // fail closed when unconfigured
+    assert.equal(noKey.res.body.code, 'not_configured')
+
+    await withAdminKey('secret-key', async () => {
+      const wrong = await request(middleware, 'DELETE', `/api/comments/${id}`, {
+        headers: { 'x-admin-key': 'nope' },
+      })
+      assert.equal(wrong.res.statusCode, 401)
+    })
+
+    // Still there after the failed attempts.
+    assert.equal((await request(middleware, 'GET', '/api/comments')).res.body.comments.length, 1)
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('DELETE removes the comment when the key matches', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    const created = await request(middleware, 'POST', '/api/comments', { body: POST_JSON })
+    const id = created.res.body.comment.id
+    await withAdminKey('secret-key', async () => {
+      const { res } = await request(middleware, 'DELETE', `/api/comments/${id}`, {
+        headers: { 'x-admin-key': 'secret-key' },
+      })
+      assert.equal(res.statusCode, 200)
+    })
+    assert.deepEqual((await request(middleware, 'GET', '/api/comments')).res.body.comments, [])
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('repeated wrong keys are rate limited', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    let last
+    await withAdminKey('secret-key', async () => {
+      for (let i = 0; i < 12; i += 1) {
+        last = await request(middleware, 'DELETE', '/api/comments/nope', {
+          headers: { 'x-admin-key': 'wrong' },
+        })
+        if (last.res.statusCode === 429) break
+      }
+    })
+    assert.equal(last.res.statusCode, 429)
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('an unknown route reports unknown_route and a wrong method reports 405', async () => {
+  const t = tempCommentsFile()
+  try {
+    const middleware = api(t.file)
+    const missing = await request(middleware, 'GET', '/api/comments/nope/deeper')
+    assert.equal(missing.res.statusCode, 404)
+    const wrongMethod = await request(middleware, 'PUT', '/api/comments')
+    assert.equal(wrongMethod.res.statusCode, 405)
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('a request outside the basePath is passed on', async () => {
+  const t = tempCommentsFile()
+  try {
+    const { nextCalled } = await request(api(t.file), 'GET', '/api/bilibili/profile')
+    assert.equal(nextCalled, true)
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('an oversized body is rejected with 413', async () => {
+  const t = tempCommentsFile()
+  try {
+    const huge = `{"author":"a","text":"${'x'.repeat(5000)}"}`
+    const { res } = await request(api(t.file), 'POST', '/api/comments', { body: huge })
+    assert.equal(res.statusCode, 413)
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('comments are never cached by the browser or a proxy', async () => {
+  const t = tempCommentsFile()
+  try {
+    const { res } = await request(api(t.file), 'GET', '/api/comments')
+    assert.equal(res.headers['cache-control'], 'no-store')
+  } finally {
+    t.cleanup()
+  }
 })

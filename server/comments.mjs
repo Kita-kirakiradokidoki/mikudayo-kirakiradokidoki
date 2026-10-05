@@ -10,7 +10,7 @@
 import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 
 export const AUTHOR_MAX = 24
 export const TEXT_MAX = 500
@@ -340,4 +340,151 @@ export function readJsonBody(req, { maxBytes = MAX_BODY_BYTES } = {}) {
 
     req.on('error', (err) => fail(new CommentsError(err.message, 400, 'bad_request')))
   })
+}
+
+/** Runtime comments live outside `dist/`; resolved from this file, not cwd. */
+const DEFAULT_FILE = fileURLToPath(new URL('../data/comments.json', import.meta.url))
+
+/**
+ * Constant-time key comparison. Both sides are hashed first so that inputs of
+ * different lengths cannot be told apart by how long the comparison takes.
+ */
+export function checkAdminKey(provided, expected) {
+  if (!expected) return { ok: false, status: 503, code: 'not_configured', error: 'Admin key is not configured' }
+  if (typeof provided !== 'string' || !provided) {
+    return { ok: false, status: 401, code: 'unauthorized', error: 'Missing admin key' }
+  }
+  const a = createHash('sha256').update(provided).digest()
+  const b = createHash('sha256').update(expected).digest()
+  return timingSafeEqual(a, b)
+    ? { ok: true }
+    : { ok: false, status: 401, code: 'unauthorized', error: 'Invalid admin key' }
+}
+
+/**
+ * Connect/Express compatible middleware exposing visitor comments.
+ *
+ * Mounted by both the Vite dev server and the production Express server.
+ *
+ *   GET    /api/comments/health
+ *   GET    /api/comments?post=<id>
+ *   POST   /api/comments
+ *   DELETE /api/comments/:id      (requires x-admin-key)
+ *
+ * @param {{ basePath?: string, file?: string | null, flushDelayMs?: number,
+ *           persistOnExit?: boolean }} [options]
+ */
+export function commentsApi(options = {}) {
+  const basePath = options.basePath ?? '/api/comments'
+  const store = createCommentStore({
+    file: options.file === undefined ? DEFAULT_FILE : options.file,
+    flushDelayMs: options.flushDelayMs,
+  })
+  const postLimiter = createPostLimiter()
+  const authLimiter = createAuthLimiter()
+
+  if (options.persistOnExit !== false) {
+    const flush = () => store.flush()
+    process.once('exit', flush)
+    for (const signal of ['SIGINT', 'SIGTERM']) {
+      process.once(signal, () => {
+        flush()
+        process.exit(0)
+      })
+    }
+  }
+
+  return async function commentsApiMiddleware(req, res, next) {
+    const url = new URL(req.url ?? '/', 'http://localhost')
+    if (!url.pathname.startsWith(basePath)) return next()
+
+    const route = url.pathname.slice(basePath.length).replace(/\/+$/, '') || '/'
+    const isRead = req.method === 'GET' || req.method === 'HEAD'
+    const methodNotAllowed = () => send(res, 405, { ok: false, code: 'method_not_allowed' })
+
+    try {
+      if (route === '/health') {
+        if (!isRead) return methodNotAllowed()
+        return send(res, 200, { ok: true })
+      }
+
+      if (route === '/') {
+        if (isRead) {
+          const post = url.searchParams.get('post')
+          return send(res, 200, { ok: true, comments: store.list(post || null) })
+        }
+        if (req.method !== 'POST') return methodNotAllowed()
+
+        const ip = clientIp(req)
+        if (!postLimiter.allow(ip)) {
+          return send(res, 429, {
+            ok: false,
+            code: 'too_many_requests',
+            error: 'Please wait a minute before posting again',
+          })
+        }
+
+        const body = await readJsonBody(req)
+
+        // Honeypot: hidden from people, irresistible to naive bots. Answer as if
+        // it worked so the bot has nothing to learn from.
+        if (typeof body?.website === 'string' && body.website.trim()) {
+          return send(res, 200, { ok: true, comment: null })
+        }
+
+        const validated = validateComment(body)
+        if (!validated.ok) {
+          return send(res, 400, { ok: false, code: validated.code, error: validated.error })
+        }
+        return send(res, 200, { ok: true, comment: store.add(validated.value) })
+      }
+
+      const id = route.startsWith('/') ? decodeURIComponent(route.slice(1)) : ''
+      if (id && !id.includes('/')) {
+        if (req.method !== 'DELETE') return methodNotAllowed()
+
+        const ip = clientIp(req)
+        if (!authLimiter.allow(ip)) {
+          return send(res, 429, { ok: false, code: 'too_many_requests', error: 'Too many attempts' })
+        }
+        const key = (process.env.COMMENTS_ADMIN_KEY ?? '').trim()
+        const auth = checkAdminKey(req.headers?.['x-admin-key'], key)
+        if (!auth.ok) {
+          return send(res, auth.status, { ok: false, code: auth.code, error: auth.error })
+        }
+        // A successful delete must not consume the failure budget.
+        authLimiter.clear(ip)
+        if (!store.remove(id)) {
+          return send(res, 404, { ok: false, code: 'unknown_route', error: 'No such comment' })
+        }
+        return send(res, 200, { ok: true })
+      }
+
+      return send(res, 404, { ok: false, code: 'unknown_route', error: 'Unknown route' })
+    } catch (err) {
+      if (err instanceof CommentsError) {
+        return send(res, err.status, { ok: false, code: err.code, error: err.message })
+      }
+      console.error('[comments-api]', err)
+      return send(res, 500, {
+        ok: false,
+        code: 'internal_error',
+        error: err instanceof Error ? err.message : 'Unexpected error',
+      })
+    }
+  }
+}
+
+/**
+ * @param {import('node:http').ServerResponse} res
+ * @param {number} status
+ * @param {unknown} body
+ * @param {number} [maxAge] `Cache-Control: max-age` in seconds
+ */
+function send(res, status, body, maxAge = 0) {
+  const json = JSON.stringify(body)
+  res.statusCode = status
+  res.setHeader('content-type', 'application/json; charset=utf-8')
+  res.setHeader('cache-control', maxAge > 0 ? `public, max-age=${maxAge}` : 'no-store')
+  res.end(json)
 }
