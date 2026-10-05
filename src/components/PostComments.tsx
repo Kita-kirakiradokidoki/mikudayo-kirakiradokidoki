@@ -31,10 +31,11 @@ export default function PostComments({ postId }: { postId: string }) {
       </h2>
 
       {loading && <p className="text-dim py-6 font-mono text-xs">…</p>}
-      {!loading && error && (
+      {/* Same rule as `CommentBoard`: an error never hides a thread we still have. */}
+      {!loading && error && comments.length === 0 && (
         <p className="text-dim py-6 font-mono text-xs">{t('comments.loadFailed')}</p>
       )}
-      {!loading && !error && <CommentList comments={comments} />}
+      {!loading && (!error || comments.length > 0) && <CommentList comments={comments} />}
 
       {/* `submitting` is the hook's own flag — see the note in `CommentBoard`. */}
       <CommentForm onSubmit={submit} submitting={submitting} />

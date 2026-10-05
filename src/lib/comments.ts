@@ -254,8 +254,14 @@ export function useComments({
     async (author: string, text: string, website = ''): Promise<CommentSubmitResult> => {
       setSubmitting(true)
       try {
-        await submitComment({ author, text, postId, website, apiBase })
-        await load() // show the visitor their own comment straight away
+        const created = await submitComment({ author, text, postId, website, apiBase })
+        // Put the visitor's own comment in the list immediately rather than waiting
+        // on the refresh below. If that refresh then fails, `load` sets `error`, and
+        // without this the visitor would be told 发送成功 while their comment was
+        // nowhere to be seen. A successful refresh replaces the whole array, so this
+        // never duplicates.
+        if (created) setFetched((current) => [created, ...current])
+        await load()
         return { ok: true }
       } catch (err) {
         // Deliberately no `setError` here. `error` gates the thread itself — both

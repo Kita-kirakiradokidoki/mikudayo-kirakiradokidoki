@@ -33,10 +33,13 @@ export default function CommentBoard() {
         </h2>
 
         {loading && <p className="text-dim py-6 font-mono text-xs">…</p>}
-        {!loading && error && (
+        {/* Never swap a thread we can still show for an error line: a failed
+            refresh after a successful post would otherwise blank the comments the
+            visitor was reading. The error only speaks when there is nothing to show. */}
+        {!loading && error && comments.length === 0 && (
           <p className="text-dim py-6 font-mono text-xs">{t('comments.loadFailed')}</p>
         )}
-        {!loading && !error && <CommentList comments={comments} />}
+        {!loading && (!error || comments.length > 0) && <CommentList comments={comments} />}
 
         {/*
           `submitting` comes from `useComments` so the button can render its
