@@ -8,6 +8,7 @@ import { type PostDef } from '../data/posts'
 import type { PostAudioTrack } from '../data/posts/types'
 import { ArrowLeft, Music, Play, Pause } from 'lucide-react'
 import { useBgm } from './AudioProvider'
+import PostComments from './PostComments'
 import { withBase } from '../lib/base'
 
 /** inline music card rendered by a `^track-id^` marker line */
@@ -399,6 +400,8 @@ export default function PostView({ post, onBack }: { post: PostDef; onBack: () =
           </div>
         </div>
       </div>
+
+        <PostComments postId={post.id} />
 
         <button
           data-post-meta
