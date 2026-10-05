@@ -188,6 +188,11 @@ export type UseCommentsResult = {
 /**
  * The one place the seeded comments and the fetched ones meet: the homepage shows
  * both, an article shows only its own visitor comments.
+ *
+ * Visitor comments come first, newest at the top — that is the feedback loop a
+ * guestbook lives on, and the server already returns them newest first. The
+ * seeded comments carry no timestamp and so take no part in that ordering; they
+ * sit at the tail, where they read as the welcome note under the live thread.
  */
 export function useComments({
   postId = null,
@@ -260,8 +265,8 @@ export function useComments({
 
   return {
     comments: [
-      ...seededFor(postId),
       ...fetched.map((c) => ({ id: c.id, author: c.author, text: c.text, createdAt: c.createdAt })),
+      ...seededFor(postId),
     ],
     error,
     silent,
