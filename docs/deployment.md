@@ -161,6 +161,21 @@ sudo certbot --nginx -d blog.example.com   # 自动配 HTTPS
 - 「今日」按北京时间（固定 +08:00）计算，与服务器时区无关。
 - 想清零重来：`rm data/stats.json && pm2 restart nagi-blog`。
 
+## 10. 访客留言
+
+首页留言板与文章评论区由 `server/comments.mjs` 提供，留言写在 `data/comments.json`。
+
+- 与 `data/stats.json` 一样属于运行时数据：不在 `dist/` 内，`npm run build` 不覆盖，已在 `.gitignore` 中，**迁移服务器时需单独备份**。
+- 访客留言**立即公开**，无审核。发现垃圾留言用下方管理页删除。
+- 管理页：访问 `你的网址/manage`，输入 `.env` 里的 `COMMENTS_ADMIN_KEY`。
+- 未配置 `COMMENTS_ADMIN_KEY` 时删除接口关闭（返回 503），留言提交与展示照常。
+- 基础防护：同 IP 每分钟 1 条；昵称 1–24 字、正文 1–500 字；蜜罐字段拦截自动脚本。
+- 列表最多显示最近 200 条。
+
+限流按访客 IP 计算，IP 取自 Nginx 写入的 `X-Real-IP`，服务端无条件信任这个头——这只在第 7 节的 Nginx 反代之后成立（那里用 `$remote_addr` 覆盖该头，客户端伪造的值会被丢弃）。
+所以 3000 端口**必须只对本机开放、绝不能暴露到公网**：一旦访客能直连，他自带一个 `X-Real-IP` 就能绕过每分钟 1 条的限制。
+注意 `server.js` 默认监听 `0.0.0.0`（所有网卡），拦住直连靠的是防火墙 / 云安全组（如 `ufw deny 3000`，或安全组只放行 80/443、让 Nginx 从 `127.0.0.1:3000` 回源），而不是监听地址本身。
+
 ## 常见问题
 
 - **右下角某张卡不显示**：对应 `.env` 身份变量未设置（`BILI_UID` / `BANGUMI_USERNAME` / `ANILIST_USERNAME`），未配置时卡自动隐藏；填好后 `pm2 restart nagi-blog` 即可。

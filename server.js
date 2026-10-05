@@ -9,6 +9,7 @@ import {
   bangumiApi,
   anilistApi,
   statsApi,
+  commentsApi,
 } from './server/api.mjs'
 import { isConfigured } from './server/steam.mjs'
 import { isNeteaseConfigured } from './server/netease.mjs'
@@ -29,6 +30,9 @@ app.use(anilistApi())
 
 // Public visit counter (persists to data/stats.json)
 app.use(statsApi())
+
+// Visitor comments (persists to data/comments.json)
+app.use(commentsApi())
 
 // Gzip 压缩
 app.use(express.static(path.join(__dirname, 'dist'), {

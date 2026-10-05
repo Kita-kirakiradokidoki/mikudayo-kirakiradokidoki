@@ -9,6 +9,7 @@ import {
   bangumiApi,
   anilistApi,
   statsApi,
+  commentsApi,
 } from './server/api.mjs'
 
 /**
@@ -97,6 +98,20 @@ function statsApiPlugin(): Plugin {
   }
 }
 
+/**
+ * Mount visitor comments on the dev server so `npm run dev` behaves exactly like
+ * production (`npm start`).
+ */
+function commentsApiPlugin(): Plugin {
+  return {
+    name: 'comments-api-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(commentsApi())
+    },
+  }
+}
+
 export default defineConfig({
   base: process.env.PAGES_BASE_URL || '/',
   // .ttc (TrueType Collection) isn't in Vite's default asset list; treat it as a static asset.
@@ -117,5 +132,6 @@ export default defineConfig({
     bangumiApiPlugin(),
     anilistApiPlugin(),
     statsApiPlugin(),
+    commentsApiPlugin(),
   ],
 })
