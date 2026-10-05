@@ -39,10 +39,11 @@ export default function CommentBoard() {
         {!loading && !error && <CommentList comments={comments} />}
 
         {/*
-          `submitting` comes from `useComments`, not from local state: the form
-          disables its button off it and its handler early-returns on it, so the
-          value has to flip before the awaited POST resolves. `useComments` sets
-          it synchronously, which is what makes that guard hold.
+          `submitting` comes from `useComments` so the button can render its
+          disabled state. It is NOT what prevents a double submit: a prop cannot be
+          relied on to have flipped within the same JS task, so two submits in one
+          task both saw `false` and both posted. That guard lives in
+          `CommentForm`'s own in-flight ref — do not delete it as redundant.
         */}
         <CommentForm onSubmit={submit} submitting={submitting} />
       </div>

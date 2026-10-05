@@ -91,7 +91,8 @@ type VisitorComment = {
 
 **必须手写 body 读取**：项目里没有 `express.json()`，且 Vite 开发服务器走的是 raw connect 中间件，`express.json()` 也覆盖不到。做法是在中间件内读 `req` 流：
 
-- 累计大小超过 **4 KB** 立即 413 并销毁连接（防止超大 body 吃内存）
+- 累计大小超过 **4 KB** 立即 413 并**停止读取**（`req.pause()`，防止超大 body 吃内存）
+  - **不要 `req.destroy()`** —— 销毁 socket 会让 413 响应发不出去，客户端拿到的是连接重置而不是状态码。`settled` 守卫已让后续 chunk 被忽略，内存仍然有界
 - JSON 解析失败 → 400
 - body 不是对象 → 400
 
