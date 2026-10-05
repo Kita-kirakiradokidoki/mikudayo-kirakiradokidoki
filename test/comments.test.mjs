@@ -3,7 +3,14 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { validateComment, createCommentStore } from '../server/comments.mjs'
+import {
+  validateComment,
+  createCommentStore,
+  createPostLimiter,
+  createAuthLimiter,
+  readJsonBody,
+  CommentsError,
+} from '../server/comments.mjs'
 
 const AT = Date.UTC(2026, 9, 5, 4, 0, 0) // fixed clock for every test
 
@@ -143,4 +150,71 @@ test('list caps at the 200 most recent comments', () => {
   } finally {
     t.cleanup()
   }
+})
+
+test('the post limiter allows one comment per IP per window', () => {
+  let now = AT
+  const limiter = createPostLimiter({ windowMs: 60_000, now: () => now })
+  assert.equal(limiter.allow('1.1.1.1'), true)
+  assert.equal(limiter.allow('1.1.1.1'), false)
+  assert.equal(limiter.allow('2.2.2.2'), true) // a different visitor is unaffected
+  now += 60_001
+  assert.equal(limiter.allow('1.1.1.1'), true)
+})
+
+test('the post limiter recycles its table instead of growing without bound', () => {
+  let now = AT
+  const limiter = createPostLimiter({ windowMs: 1_000, maxKeys: 10, now: () => now })
+  for (let i = 0; i < 50; i += 1) limiter.allow(`10.0.0.${i}`)
+  now += 1_001
+  // Stale entries are dropped, so a fresh IP is still admitted.
+  assert.equal(limiter.allow('10.0.0.99'), true)
+})
+
+test('the auth limiter counts failures and forgets them once cleared', () => {
+  const limiter = createAuthLimiter({ windowMs: 60_000, maxAttempts: 3, now: () => AT })
+  assert.equal(limiter.allow('9.9.9.9'), true)
+  assert.equal(limiter.allow('9.9.9.9'), true)
+  assert.equal(limiter.allow('9.9.9.9'), true)
+  assert.equal(limiter.allow('9.9.9.9'), false) // 4th failed try is refused
+  limiter.clear('9.9.9.9')
+  assert.equal(limiter.allow('9.9.9.9'), true)
+})
+
+/** A request stub that replays `chunks` and then ends. */
+function bodyReq(chunks) {
+  const handlers = {}
+  return {
+    on(event, fn) {
+      handlers[event] = fn
+      return this
+    },
+    destroy() {},
+    /** Drive the fake stream once the caller has attached its listeners. */
+    async replay() {
+      for (const chunk of chunks) handlers.data?.(Buffer.from(chunk))
+      handlers.end?.()
+    },
+  }
+}
+
+test('readJsonBody parses a JSON body', async () => {
+  const req = bodyReq(['{"author":"a",', '"text":"b"}'])
+  const pending = readJsonBody(req)
+  await req.replay()
+  assert.deepEqual(await pending, { author: 'a', text: 'b' })
+})
+
+test('readJsonBody rejects a body over the size cap', async () => {
+  const req = bodyReq(['x'.repeat(5000)])
+  const pending = readJsonBody(req)
+  await req.replay()
+  await assert.rejects(pending, (err) => err instanceof CommentsError && err.status === 413)
+})
+
+test('readJsonBody rejects invalid JSON', async () => {
+  const req = bodyReq(['{ not json'])
+  const pending = readJsonBody(req)
+  await req.replay()
+  await assert.rejects(pending, (err) => err instanceof CommentsError && err.status === 400)
 })

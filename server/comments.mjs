@@ -181,3 +181,128 @@ export function createCommentStore({
 
   return { list, add, remove, flush }
 }
+
+export const MAX_BODY_BYTES = 4 * 1024
+
+/** An error carrying the HTTP status and stable code the API should report. */
+export class CommentsError extends Error {
+  constructor(message, status, code) {
+    super(message)
+    this.name = 'CommentsError'
+    this.status = status
+    this.code = code
+  }
+}
+
+/**
+ * The visitor's address as seen through Nginx. The proxy passes the real address
+ * in `X-Forwarded-For`, so `req.socket.remoteAddress` would always be 127.0.0.1.
+ */
+export function clientIp(req) {
+  const forwarded = req.headers?.['x-forwarded-for']
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded
+  if (typeof raw === 'string' && raw.trim()) return raw.split(',')[0].trim()
+  return req.socket?.remoteAddress ?? 'unknown'
+}
+
+/** Drop stale keys so forged addresses cannot grow the table without bound. */
+function prune(map, now, windowMs, maxKeys) {
+  if (map.size <= maxKeys) return
+  for (const [key, entry] of map) {
+    const stamp = typeof entry === 'number' ? entry : entry.start
+    if (now - stamp >= windowMs) map.delete(key)
+  }
+  if (map.size > maxKeys) map.clear()
+}
+
+/** One comment per address per window. */
+export function createPostLimiter({ windowMs = 60_000, maxKeys = 10_000, now = Date.now } = {}) {
+  const seen = new Map()
+  return {
+    allow(ip) {
+      const t = now()
+      prune(seen, t, windowMs, maxKeys)
+      const last = seen.get(ip)
+      if (last !== undefined && t - last < windowMs) return false
+      seen.set(ip, t)
+      return true
+    },
+  }
+}
+
+/**
+ * Counts failed admin-key attempts only. Successful deletes must not be limited,
+ * or the site owner cannot clear several spam comments in a row.
+ */
+export function createAuthLimiter({
+  windowMs = 60_000,
+  maxAttempts = 10,
+  maxKeys = 10_000,
+  now = Date.now,
+} = {}) {
+  const attempts = new Map()
+  return {
+    allow(ip) {
+      const t = now()
+      prune(attempts, t, windowMs, maxKeys)
+      const entry = attempts.get(ip)
+      if (!entry || t - entry.start >= windowMs) {
+        attempts.set(ip, { start: t, count: 1 })
+        return true
+      }
+      if (entry.count >= maxAttempts) return false
+      entry.count += 1
+      return true
+    },
+    clear(ip) {
+      attempts.delete(ip)
+    },
+  }
+}
+
+/**
+ * Read a JSON request body with a hard size cap.
+ *
+ * Written by hand because this middleware also runs on the Vite dev server as a
+ * raw connect middleware, where `express.json()` does not exist.
+ */
+export function readJsonBody(req, { maxBytes = MAX_BODY_BYTES } = {}) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    let size = 0
+    let settled = false
+
+    const fail = (err) => {
+      if (settled) return
+      settled = true
+      reject(err)
+    }
+
+    req.on('data', (chunk) => {
+      if (settled) return
+      size += chunk.length
+      if (size > maxBytes) {
+        fail(new CommentsError('Request body is too large', 413, 'payload_too_large'))
+        req.destroy?.()
+        return
+      }
+      chunks.push(chunk)
+    })
+
+    req.on('end', () => {
+      if (settled) return
+      const raw = Buffer.concat(chunks).toString('utf8').trim()
+      if (!raw) return fail(new CommentsError('Expected a JSON body', 400, 'bad_request'))
+      let parsed
+      try {
+        parsed = JSON.parse(raw)
+      } catch {
+        return fail(new CommentsError('Request body is not valid JSON', 400, 'bad_request'))
+      }
+      settled = true
+      resolve(parsed)
+    })
+
+    req.on('error', (err) => fail(new CommentsError(err.message, 400, 'bad_request')))
+  })
+}
