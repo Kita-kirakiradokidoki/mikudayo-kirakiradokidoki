@@ -146,6 +146,12 @@ export type SiteConfig = {
     /** override when the server is hosted on another origin */
     apiBase: string
   }
+  comments: {
+    /** master switch for the guestbook and per-article comment threads */
+    enabled: boolean
+    /** override when the server is hosted on another origin */
+    apiBase: string
+  }
   grid: {
     enabled: boolean
   }
@@ -372,6 +378,11 @@ export const SITE_CONFIG: SiteConfig = {
     apiBase: '/api/stats',
   },
 
+  comments: {
+    enabled: true,
+    apiBase: '/api/comments',
+  },
+
   grid: {
     enabled: false,
   },
@@ -495,6 +506,21 @@ export const SITE_CONFIG: SiteConfig = {
       'datawall.anime.current': '追番中',
       'datawall.anime.hours': '小时',
       'datawall.anime.favourites': '最爱',
+      'comments.title': '留言板',
+      'comments.empty': '还没有留言，来当第一个吧~',
+      'comments.name': '昵称',
+      'comments.namePlaceholder': '怎么称呼你？',
+      'comments.body': '留言',
+      'comments.bodyPlaceholder': '说点什么…',
+      'comments.submit': '发送',
+      'comments.sending': '发送中…',
+      'comments.sent': '发送成功，谢谢！',
+      'comments.count': '留言',
+      'comments.loadFailed': '暂时无法加载留言',
+      'comments.sendFailed': '发送失败，请稍后重试',
+      'comments.tooFast': '发得太快了，请等一分钟再试',
+      'comments.tooLong': '内容太长了',
+      'comments.needNameAndBody': '昵称和留言都要填哦',
       'footer.tagline': '咕咕嘎嘎？',
       'footer.built': '使用 React · GSAP · Tailwind · Bun 构建。',
       'lofi.title': '深夜自习室',
@@ -591,6 +617,21 @@ export const SITE_CONFIG: SiteConfig = {
       'datawall.anime.current': 'current',
       'datawall.anime.hours': 'hours',
       'datawall.anime.favourites': 'Favourites',
+      'comments.title': 'guestbook',
+      'comments.empty': 'No comments yet — be the first!',
+      'comments.name': 'name',
+      'comments.namePlaceholder': 'What should we call you?',
+      'comments.body': 'comment',
+      'comments.bodyPlaceholder': 'Say something…',
+      'comments.submit': 'send',
+      'comments.sending': 'sending…',
+      'comments.sent': 'Sent. Thank you!',
+      'comments.count': 'comments',
+      'comments.loadFailed': 'Comments are unavailable right now',
+      'comments.sendFailed': 'Could not send. Please try again.',
+      'comments.tooFast': 'Too fast — please wait a minute',
+      'comments.tooLong': 'That is too long',
+      'comments.needNameAndBody': 'Both a name and a comment are required',
       'footer.tagline': 'I am a PlaceHolder',
       'footer.built': 'Built with React · GSAP · Tailwind · Bun.',
       'lofi.title': 'Lo-fi Study Room',
