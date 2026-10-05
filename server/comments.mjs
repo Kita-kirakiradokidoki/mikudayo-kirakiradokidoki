@@ -426,8 +426,12 @@ export function commentsApi(options = {}) {
 
         const body = await readJsonBody(req)
 
-        // Honeypot: hidden from people, irresistible to naive bots. Answer as if
-        // it worked so the bot has nothing to learn from.
+        // Honeypot: hidden from people, irresistible to naive bots. The status is
+        // the same as a real success, which is enough to fool a script that only
+        // reads the status code. The body is not the same (`comment: null`, and
+        // nothing was stored), so a bot that inspects the body can tell — forging
+        // a comment just to hide that would put fake data in the guestbook, which
+        // is not worth it.
         if (typeof body?.website === 'string' && body.website.trim()) {
           return send(res, 200, { ok: true, comment: null })
         }
@@ -439,7 +443,22 @@ export function commentsApi(options = {}) {
         return send(res, 200, { ok: true, comment: store.add(validated.value) })
       }
 
-      const id = route.startsWith('/') ? decodeURIComponent(route.slice(1)) : ''
+      let id = ''
+      if (route.startsWith('/')) {
+        try {
+          id = decodeURIComponent(route.slice(1))
+        } catch {
+          // A malformed escape (`/api/comments/%zz`) is the client's mistake, not
+          // a server fault. Reporting it here keeps it out of the catch-all below,
+          // which would both mislabel it as `internal_error` and hand anyone a
+          // free log line for every request they send.
+          return send(res, 400, {
+            ok: false,
+            code: 'bad_request',
+            error: 'Malformed percent-encoding in path',
+          })
+        }
+      }
       if (id && !id.includes('/')) {
         if (req.method !== 'DELETE') return methodNotAllowed()
 

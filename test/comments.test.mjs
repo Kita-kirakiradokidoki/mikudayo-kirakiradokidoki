@@ -417,7 +417,9 @@ test('the honeypot accepts but silently discards bot submissions', async () => {
     const middleware = api(t.file)
     const bot = JSON.stringify({ author: 'bot', text: 'buy now', website: 'http://spam' })
     const { res } = await request(middleware, 'POST', '/api/comments', { body: bot })
-    assert.equal(res.statusCode, 200) // deliberately indistinguishable from success
+    // The status is indistinguishable from a real success; the body is not
+    // (`comment: null`). The honeypot only aims to fool status-code-only scripts.
+    assert.equal(res.statusCode, 200)
     const list = await request(middleware, 'GET', '/api/comments')
     assert.deepEqual(list.res.body.comments, [])
   } finally {
@@ -525,6 +527,19 @@ test('an unknown route reports unknown_route and a wrong method reports 405', as
     assert.equal(missing.res.statusCode, 404)
     const wrongMethod = await request(middleware, 'PUT', '/api/comments')
     assert.equal(wrongMethod.res.statusCode, 405)
+  } finally {
+    t.cleanup()
+  }
+})
+
+test('a malformed percent-escape in the path is a bad request, not a crash', async () => {
+  const t = tempCommentsFile()
+  try {
+    // `decodeURIComponent` throws on this, which would otherwise reach the catch-all
+    // and report a server fault (plus a log line) for a request the client botched.
+    const { res } = await request(api(t.file), 'GET', '/api/comments/%zz')
+    assert.equal(res.statusCode, 400)
+    assert.equal(res.body.code, 'bad_request')
   } finally {
     t.cleanup()
   }
