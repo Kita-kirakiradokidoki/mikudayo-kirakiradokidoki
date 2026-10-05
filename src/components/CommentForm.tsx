@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useLang } from '../i18n'
 import {
   COMMENTS_AUTHOR_MAX,
@@ -26,6 +26,8 @@ export default function CommentForm({
   const [text, setText] = useState('')
   const [website, setWebsite] = useState('')
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null)
+  /** Synchronous submit guard — see `handleSubmit`. */
+  const inFlight = useRef(false)
 
   // Editing a field invalidates the last notice: a stale "send failed" sitting
   // next to a field being retyped reads as if the new text failed too.
@@ -41,41 +43,52 @@ export default function CommentForm({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    // A disabled button does not stop Enter inside a text field from submitting
-    // the form, so guard the handler too — two POSTs would double-post.
-    if (submitting) return
-    if (!author.trim() || !text.trim()) {
-      setNotice({ tone: 'bad', text: t('comments.needNameAndBody') })
-      return
-    }
-    // `maxLength` already caps both fields in the browser and the counter below
-    // reports the same raw length, so this guard only catches what slipped past
-    // it. Counting UTF-16 units is stricter than the server's code-point count:
-    // it can reject early, never let an over-long comment through.
-    if (author.length > COMMENTS_AUTHOR_MAX || text.length > COMMENTS_TEXT_MAX) {
-      setNotice({ tone: 'bad', text: t('comments.tooLong') })
-      return
-    }
-
-    let result: CommentSubmitResult
+    // A disabled button does not stop Enter inside a text field from submitting the
+    // form, and the `submitting` prop cannot cover it either: two submits in the same
+    // JS task both read the same stale value, because React has not re-rendered
+    // between them. This ref flips synchronously, so the second one exits here.
+    // Correctness must not depend on what the caller passes as `submitting` — that
+    // prop is now only what greys the button out.
+    if (inFlight.current) return
+    inFlight.current = true
     try {
-      result = await onSubmit(author, text, website)
-    } catch {
-      // `onSubmit` promises a result rather than a throw. If a future caller breaks
-      // that promise, the visitor still gets a failure message instead of silence.
-      result = { ok: false, code: 'network_error' }
-    }
+      if (!author.trim() || !text.trim()) {
+        setNotice({ tone: 'bad', text: t('comments.needNameAndBody') })
+        return
+      }
+      // `maxLength` already caps both fields in the browser and the counter below
+      // reports the same raw length, so this guard only catches what slipped past
+      // it. Counting UTF-16 units is stricter than the server's code-point count:
+      // it can reject early, never let an over-long comment through.
+      if (author.length > COMMENTS_AUTHOR_MAX || text.length > COMMENTS_TEXT_MAX) {
+        setNotice({ tone: 'bad', text: t('comments.tooLong') })
+        return
+      }
 
-    if (result.ok) {
-      // Clear the body directly rather than through `changeText`, which would
-      // wipe the notice we are about to set.
-      setText('')
-      setNotice({ tone: 'ok', text: t('comments.sent') })
-    } else {
-      setNotice({
-        tone: 'bad',
-        text: result.code === COMMENTS_RATE_LIMITED ? t('comments.tooFast') : t('comments.sendFailed'),
-      })
+      let result: CommentSubmitResult
+      try {
+        result = await onSubmit(author, text, website)
+      } catch {
+        // `onSubmit` promises a result rather than a throw. If a future caller breaks
+        // that promise, the visitor still gets a failure message instead of silence.
+        result = { ok: false, code: 'network_error' }
+      }
+
+      if (result.ok) {
+        // Clear the body directly rather than through `changeText`, which would
+        // wipe the notice we are about to set.
+        setText('')
+        setNotice({ tone: 'ok', text: t('comments.sent') })
+      } else {
+        setNotice({
+          tone: 'bad',
+          text: result.code === COMMENTS_RATE_LIMITED ? t('comments.tooFast') : t('comments.sendFailed'),
+        })
+      }
+    } finally {
+      // Also reached by every `return` above, so an invalid submit cannot leave the
+      // form permanently locked.
+      inFlight.current = false
     }
   }
 
