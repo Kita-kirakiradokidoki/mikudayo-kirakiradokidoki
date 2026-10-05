@@ -119,7 +119,7 @@ type VisitorComment = {
 |---|---|
 | 发帖限速 | 内存 `Map<ip, lastPostMs>`，同 IP 60 秒内只能发 1 条，超限 429 |
 | 鉴权限速 | 另一张 `Map<ip, {count, windowStart}>`，同 IP 每分钟最多 10 次**密钥试错**，超限 429；删除成功不计入 |
-| 真实 IP | 读 `X-Forwarded-For` 的第一段（Nginx 已透传）；缺失时回退 `req.socket.remoteAddress` |
+| 真实 IP | 依次取：`X-Real-IP` → `X-Forwarded-For` 的**最后一段** → `req.socket.remoteAddress` → `'unknown'`。**绝不能取 XFF 的第一段**（见下方说明） |
 | 内存上限 | 限速表按窗口清理，并设条目上限，防止伪造 IP 撑爆内存 |
 | 长度 | 见上表 |
 | 蜜罐 | 见上表 |

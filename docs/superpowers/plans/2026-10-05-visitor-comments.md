@@ -527,11 +527,30 @@ export class CommentsError extends Error {
 /**
  * The visitor's address as seen through Nginx. The proxy passes the real address
  * in `X-Forwarded-For`, so `req.socket.remoteAddress` would always be 127.0.0.1.
+ *
+ * Take the LAST hop, never the first: our nginx uses
+ * `$proxy_add_x_forwarded_for`, which appends the real address to whatever the
+ * client sent — so leading segments are attacker-controlled. `x-real-ip` is set
+ * by nginx with `$remote_addr` and cannot be spoofed, so it wins when present.
+ *
+ * NOTE: this trusts `x-real-ip` unconditionally, so the app must stay bound to
+ * localhost behind the nginx in `docs/deployment.md`. See Ruling 11/15 in
+ * `.superpowers/sdd/2026-10-05-visitor-comments/progress.md`.
  */
 export function clientIp(req) {
+  // nginx sets `X-Real-IP` from `$remote_addr`, overwriting anything the client
+  // sent, so it is the one header a visitor cannot forge.
+  const realIp = req.headers?.['x-real-ip']
+  const real = Array.isArray(realIp) ? realIp[0] : realIp
+  if (typeof real === 'string' && real.trim()) return real.trim()
+
   const forwarded = req.headers?.['x-forwarded-for']
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded
-  if (typeof raw === 'string' && raw.trim()) return raw.split(',')[0].trim()
+  const raw = Array.isArray(forwarded) ? forwarded[forwarded.length - 1] : forwarded
+  if (typeof raw === 'string' && raw.trim()) {
+    const hops = raw.split(',')
+    const last = hops[hops.length - 1].trim()
+    if (last) return last
+  }
   return req.socket?.remoteAddress ?? 'unknown'
 }
 
