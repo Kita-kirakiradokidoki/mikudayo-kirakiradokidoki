@@ -33,13 +33,21 @@ export class CommentsRequestError extends Error {
 
 /**
  * What a submission attempt reports back. The code matters to the UI: a rate
- * limit (`too_many_requests`) deserves its own wording, everything else shares
- * one message.
+ * limit deserves its own wording, everything else shares one message. A union
+ * rather than `{ ok: boolean; code?: string }`, so a failure is guaranteed to
+ * carry a code the caller can branch on.
  */
-export type CommentSubmitResult = { ok: boolean; code?: string }
+export type CommentSubmitResult = { ok: true } | { ok: false; code: string }
 
 /** Failures that mean "there is no comment service here" (static hosting). */
 export const COMMENTS_SILENT_CODES = new Set(['bad_response', 'unknown_route', 'method_not_allowed'])
+
+/**
+ * The server's 429 code for "you posted too recently" — mirrors the literal in
+ * `server/comments.mjs`. It lives here, next to `COMMENTS_SILENT_CODES`, so the
+ * UI never spells out a code the server owns.
+ */
+export const COMMENTS_RATE_LIMITED = 'too_many_requests'
 
 /** Mirrors `AUTHOR_MAX` / `TEXT_MAX` in `server/comments.mjs`. */
 export const COMMENTS_AUTHOR_MAX = 24
@@ -128,6 +136,26 @@ export async function deleteComment({
     headers: { 'x-admin-key': adminKey, accept: 'application/json' },
   })
   await readJson(res)
+}
+
+/** Same fixed offset as `CN_OFFSET_MS` in `server/stats.mjs`. */
+const CN_OFFSET_MS = 8 * 60 * 60 * 1000
+
+/**
+ * A comment's calendar date in Asia/Shanghai as 'YYYY-MM-DD'.
+ *
+ * Not `iso.slice(0, 10)`: the server stores UTC, so that would show the previous
+ * day for anything posted between 00:00 and 08:00 Beijing time. Not
+ * `toLocaleDateString()` either — that would date each visitor's view by their own
+ * timezone, while every other date on this site is Beijing time. China has had no
+ * DST since 1991, so a fixed offset is always correct and avoids pulling in ICU.
+ *
+ * Returns '' for a value that is not a parseable timestamp.
+ */
+export function formatCommentDate(iso: string): string {
+  const time = Date.parse(iso)
+  if (Number.isNaN(time)) return ''
+  return new Date(time + CN_OFFSET_MS).toISOString().slice(0, 10)
 }
 
 /**

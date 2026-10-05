@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useLang } from '../i18n'
-import { COMMENTS_AUTHOR_MAX, COMMENTS_TEXT_MAX, type CommentSubmitResult } from '../lib/comments'
+import {
+  COMMENTS_AUTHOR_MAX,
+  COMMENTS_RATE_LIMITED,
+  COMMENTS_TEXT_MAX,
+  type CommentSubmitResult,
+} from '../lib/comments'
 
 /**
  * The one comment form, shared by the homepage guestbook and every article
@@ -52,7 +57,15 @@ export default function CommentForm({
       return
     }
 
-    const result = await onSubmit(author, text, website)
+    let result: CommentSubmitResult
+    try {
+      result = await onSubmit(author, text, website)
+    } catch {
+      // `onSubmit` promises a result rather than a throw. If a future caller breaks
+      // that promise, the visitor still gets a failure message instead of silence.
+      result = { ok: false, code: 'network_error' }
+    }
+
     if (result.ok) {
       // Clear the body directly rather than through `changeText`, which would
       // wipe the notice we are about to set.
@@ -61,7 +74,7 @@ export default function CommentForm({
     } else {
       setNotice({
         tone: 'bad',
-        text: result.code === 'too_many_requests' ? t('comments.tooFast') : t('comments.sendFailed'),
+        text: result.code === COMMENTS_RATE_LIMITED ? t('comments.tooFast') : t('comments.sendFailed'),
       })
     }
   }
