@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { createServer } from 'node:http'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -235,15 +236,24 @@ test('clientIp ignores blank proxy headers and falls back to the socket address'
   assert.equal(clientIp(ipReq()), 'unknown')
 })
 
-/** A request stub that replays `chunks` and then ends. */
+/**
+ * A request stub that replays `chunks` and then ends.
+ *
+ * `destroy` is recorded rather than performed: tearing the socket down is
+ * exactly the mistake these tests exist to catch, and a no-op stub cannot see
+ * it. `req.destroyed` is what the assertions read.
+ */
 function bodyReq(chunks) {
   const handlers = {}
-  return {
+  const req = {
+    destroyed: false,
     on(event, fn) {
       handlers[event] = fn
-      return this
+      return req
     },
-    destroy() {},
+    destroy() {
+      req.destroyed = true
+    },
     /** Drive the fake stream once the caller has attached its listeners. */
     async replay() {
       for (const chunk of chunks) handlers.data?.(Buffer.from(chunk))
@@ -254,6 +264,7 @@ function bodyReq(chunks) {
       handlers.error?.(err)
     },
   }
+  return req
 }
 
 test('readJsonBody parses a JSON body', async () => {
@@ -268,6 +279,11 @@ test('readJsonBody rejects a body over the size cap', async () => {
   const pending = readJsonBody(req)
   await req.replay()
   await assert.rejects(pending, (err) => err instanceof CommentsError && err.status === 413)
+  // Rejecting is the reader's whole job — its caller still has a 413 to write to
+  // this socket. An earlier version called `req.destroy()` on the way out, which
+  // killed the connection before that write, so the client got a reset instead of
+  // the documented status. This assertion is what would catch that coming back.
+  assert.equal(req.destroyed, false)
 })
 
 test('readJsonBody rejects invalid JSON', async () => {
@@ -323,17 +339,21 @@ async function request(middleware, method, url, { body, headers = {} } = {}) {
     url,
     headers,
     socket: { remoteAddress: '5.5.5.5' },
-    destroy() {},
+    /** Recorded, not performed — see the note on `bodyReq`. */
+    destroyed: false,
+    destroy() {
+      req.destroyed = true
+    },
     on(event, fn) {
       if (event === 'data' && body !== undefined) fn(Buffer.from(body))
       if (event === 'end') queueMicrotask(fn)
-      return this
+      return req
     },
   }
   await middleware(req, res, () => {
     nextCalled = true
   })
-  return { res, nextCalled }
+  return { res, nextCalled, req }
 }
 
 /**
@@ -559,11 +579,62 @@ test('an oversized body is rejected with 413', async () => {
   const t = tempCommentsFile()
   try {
     const huge = `{"author":"a","text":"${'x'.repeat(5000)}"}`
-    const { res } = await request(api(t.file), 'POST', '/api/comments', { body: huge })
+    const { res, req } = await request(api(t.file), 'POST', '/api/comments', { body: huge })
     assert.equal(res.statusCode, 413)
+    // The code, not just the status: `payload_too_large` is the contract the spec
+    // publishes, and status alone would not notice it being renamed away.
+    assert.equal(res.body.code, 'payload_too_large')
+    // The socket has to survive so the 413 above can actually be written to it.
+    assert.equal(req.destroyed, false)
   } finally {
     t.cleanup()
   }
+})
+
+/**
+ * The middleware behind a real socket. `mockRes` records a body whether or not a
+ * client could ever receive it, so the one thing it structurally cannot test is
+ * whether a response reaches the wire. This is that test's home.
+ */
+async function withHttpServer(fn) {
+  const middleware = commentsApi({ file: null, persistOnExit: false, flushDelayMs: 0 })
+  const server = createServer((req, res) =>
+    middleware(req, res, () => {
+      res.statusCode = 404
+      res.end()
+    }),
+  )
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  try {
+    return await fn(`http://127.0.0.1:${server.address().port}`)
+  } finally {
+    await new Promise((resolve) => {
+      server.close(resolve)
+      // Keep-alive sockets would otherwise hold `close()` open.
+      server.closeAllConnections?.()
+    })
+  }
+}
+
+test('an oversized body reaches a real client as 413, not a dropped connection', async () => {
+  // Regression guard for `req.destroy()` in `readJsonBody`. With it, the socket
+  // died before the middleware's error path ran and `fetch` rejected with
+  // `UND_ERR_SOCKET` — the documented status was unreachable from any client,
+  // while the mock-based test above stayed green because its `destroy()` was a
+  // no-op. Only a real socket can tell those two apart.
+  await withHttpServer(async (origin) => {
+    const res = await fetch(`${origin}/api/comments`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ author: 'a', text: 'x'.repeat(5000) }),
+    })
+    assert.equal(res.status, 413)
+    assert.equal((await res.json()).code, 'payload_too_large')
+
+    // And the server is still serving — the cap must not cost it the process.
+    const health = await fetch(`${origin}/api/comments/health`)
+    assert.equal(health.status, 200)
+  })
 })
 
 test('comments are never cached by the browser or a proxy', async () => {

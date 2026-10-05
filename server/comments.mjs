@@ -317,8 +317,14 @@ export function readJsonBody(req, { maxBytes = MAX_BODY_BYTES } = {}) {
       if (settled) return
       size += chunk.length
       if (size > maxBytes) {
+        // Stop reading and reject — the caller's error path still has a 413 to
+        // write to this socket. Destroying the request here would tear down the
+        // connection before that write, so the client would see a reset instead
+        // of the documented `payload_too_large`. Memory is still bounded: the
+        // `settled` guard above drops every chunk that follows, so `chunks`
+        // never grows past the cap, and a paused request stops emitting at all.
         fail(new CommentsError('Request body is too large', 413, 'payload_too_large'))
-        req.destroy?.()
+        req.pause?.()
         return
       }
       chunks.push(chunk)

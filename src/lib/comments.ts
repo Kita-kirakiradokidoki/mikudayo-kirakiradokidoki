@@ -175,12 +175,22 @@ function seededFor(postId: string | null): DisplayComment[] {
 
 export type UseCommentsResult = {
   comments: DisplayComment[]
+  /**
+   * A failure to *load* the thread, and nothing else. A rejected submit is
+   * reported through `submit`'s result instead — see the note there — because
+   * the callers replace the whole list with a "could not load" line whenever
+   * this is set, which is the wrong thing to do to a list that is still there.
+   */
   error: CommentsRequestError | null
   /** true when this deployment has no comment service, so the thread stays hidden */
   silent: boolean
   loading: boolean
   submitting: boolean
-  /** `{ ok: false, code }` when the comment was rejected; `error` then says why */
+  /**
+   * `{ ok: false, code }` when the comment was rejected. `code` is all the caller
+   * needs to choose its wording, so a rejected submit deliberately leaves `error`
+   * untouched.
+   */
   submit: (author: string, text: string, website?: string) => Promise<CommentSubmitResult>
   refresh: () => void
 }
@@ -248,11 +258,17 @@ export function useComments({
         await load() // show the visitor their own comment straight away
         return { ok: true }
       } catch (err) {
+        // Deliberately no `setError` here. `error` gates the thread itself — both
+        // consumers swap the list for a "could not load" line when it is set — so
+        // reporting a rejected submit through it would blank the comments the
+        // visitor was reading. That is the normal outcome of posting twice inside
+        // a minute: the server answers 429, and the visitor would lose the whole
+        // thread to a message that also misnames what failed. Only `load` owns
+        // `error`; the form owns the wording for a failure to send.
         const failure =
           err instanceof CommentsRequestError
             ? err
             : new CommentsRequestError(err instanceof Error ? err.message : 'Comment request failed', 'network_error')
-        setError(failure)
         // A failure that is not a CommentsRequestError — a thrown fetch, say — was
         // wrapped above, so `code` is always something the caller can branch on.
         return { ok: false, code: failure.code }
