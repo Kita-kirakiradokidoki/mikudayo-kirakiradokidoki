@@ -111,13 +111,14 @@ type VisitorComment = {
 - 密钥来自服务端 `.env` 的 `COMMENTS_ADMIN_KEY`，**不写进代码、不进前端 bundle**
 - 请求头 `x-admin-key` 与密钥用 `crypto.timingSafeEqual` 做**恒定时间比较**（长度不等时先 hash 再比较，避免长度侧信道）
 - **未配置 `COMMENTS_ADMIN_KEY` 时，删除接口返回 503 `not_configured`**（fail closed，不能因为漏配就变成任何人都能删）
-- 删除接口同样受限速约束
+- **限速只针对鉴权失败**：同一 IP 每分钟最多 10 次密钥试错，超出 429。**成功删除不被限速** —— 否则站长连续清理几条垃圾留言时会被自己的限速挡住，那是不可接受的体验
 
 ## 防刷
 
 | 措施 | 实现 |
 |---|---|
-| 限速 | 内存 `Map<ip, lastPostMs>`，同 IP 60 秒内只能发 1 条，超限 429 |
+| 发帖限速 | 内存 `Map<ip, lastPostMs>`，同 IP 60 秒内只能发 1 条，超限 429 |
+| 鉴权限速 | 另一张 `Map<ip, {count, windowStart}>`，同 IP 每分钟最多 10 次**密钥试错**，超限 429；删除成功不计入 |
 | 真实 IP | 读 `X-Forwarded-For` 的第一段（Nginx 已透传）；缺失时回退 `req.socket.remoteAddress` |
 | 内存上限 | 限速表按窗口清理，并设条目上限，防止伪造 IP 撑爆内存 |
 | 长度 | 见上表 |
